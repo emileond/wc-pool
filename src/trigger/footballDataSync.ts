@@ -5,7 +5,7 @@ const FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4";
 const WORLD_CUP_COMPETITION_CODE = "WC";
 const WORLD_CUP_SEASON = process.env.FOOTBALL_DATA_SEASON || "2026";
 const FOOTBALL_DATA_TIMEOUT_MS = 15_000;
-const FOOTBALL_DATA_RETRIES = 3;
+const FOOTBALL_DATA_RETRIES = 1;
 
 type FootballDataTeam = {
   name?: string | null;
@@ -295,8 +295,11 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch) {
 export const syncWorldCupMatches = schedules.task({
   id: "sync-world-cup-matches",
   cron: {
-    pattern: "*/30 * * * *",
+    pattern: "*/20 * * * *",
     timezone: "UTC",
+  },
+  retry: {
+    maxAttempts: 1,
   },
   maxDuration: 300,
   run: async () => {

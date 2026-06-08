@@ -85,7 +85,7 @@ The in-app admin PIN is only a local fallback UI unlock. PocketBase authorizatio
 
 Match fixtures and results are synced by Trigger.dev from football-data.org.
 
-The scheduled task is in `src/trigger/footballDataSync.ts`. It runs every 30 minutes, calls:
+The scheduled task is in `src/trigger/footballDataSync.ts`. It runs every 20 minutes, calls:
 
 ```bash
 https://api.football-data.org/v4/competitions/WC/matches?season=2026
@@ -107,6 +107,8 @@ POCKETBASE_ADMIN_PASSWORD=admin-user-password
 
 `FOOTBALL_DATA_SEASON` is optional and defaults to `2026`.
 
+The free football-data.org tier allows 100 requests/day. A 20-minute schedule uses 72 planned requests/day, leaving margin for manual testing or occasional failed runs. The task disables Trigger-level retries and does not internally retry football-data.org requests by default so scheduled usage stays predictable.
+
 `POCKETBASE_ADMIN_EMAIL` should be a normal `users` auth account with `is_admin = true`, not necessarily a PocketBase superuser. The `matches` create/update/delete API rules above authorize that account to sync fixtures.
 
 Run locally:
@@ -124,3 +126,9 @@ npm run trigger:deploy
 If the task fails with `TypeError: fetch failed`, the request did not reach football-data.org. Check DNS/network access from the Trigger.dev runtime or from the machine running `npm run trigger:dev`. HTTP errors such as `401`, `403`, or `429` mean the API was reached and the token, permissions, or rate limit should be checked instead.
 
 The sync intentionally fails the Trigger.dev run if football-data.org cannot be reached, returns an invalid response shape, or returns zero matches. A successful run means at least one upstream match was fetched and every fetched match was upserted into PocketBase.
+
+## Leaderboard Storage
+
+The leaderboard is currently calculated in the browser from public `users`, `matches`, and `predictions` records. That is fine for a small private pool and avoids another collection to keep in sync.
+
+Store leaderboard rows in PocketBase only if you want to hide raw predictions from public reads or if the pool becomes large enough that client-side calculation is slow. If you add stored standings, update them after both match syncs and prediction writes; recalculating only after the scheduled match sync would miss newly submitted picks.
