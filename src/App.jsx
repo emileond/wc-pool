@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Avatar from 'boring-avatars'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import {
@@ -11,8 +11,11 @@ import {
   LogOut,
   Medal,
   Menu,
+  Monitor,
+  Moon,
   Plus,
   Sparkles,
+  Sun,
   Trash2,
   Trophy,
   UserPlus,
@@ -30,7 +33,15 @@ pb.autoCancellation(false)
 //    - email     (auth identity field)
 //    - password  (auth field)
 //    - name      (text, required)
-//    - is_admin  (bool, default false)
+//    - is_admin  (bool, default false; global fixture admin only)
+//
+//  workspaces
+//    - name      (text, required; also used as the URL segment)
+//
+//  memberships
+//    - workspace (relation → workspaces)
+//    - user      (relation → users)
+//    - role      (text/select: "owner" | "admin" | "member")
 //
 //  matches
 //    - external_id (text, unique; football-data.org match id)
@@ -39,12 +50,14 @@ pb.autoCancellation(false)
 //    - home_score, away_score (number; synced from score.fullTime)
 //
 //  predictions
+//    - workspace (relation → workspaces)
 //    - user      (relation → users)
 //    - match     (relation → matches)
 //    - pick      (text: "home" | "draw" | "away")
 //
 //  leaderboard
-//    - user        (relation → users, unique)
+//    - workspace   (relation → workspaces)
+//    - user        (relation → users)
 //    - name        (text)
 //    - points      (number)
 //    - correct     (number)
@@ -59,6 +72,7 @@ pb.autoCancellation(false)
 
 const STORAGE_KEY = 'wc-pool-demo-data'
 const PLAYER_KEY = 'wc-pool-player'   // demo mode only
+const THEME_KEY = 'wc-pool-theme'
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '2026'
 
 const STAGE_TABS = [
@@ -96,7 +110,7 @@ const demoMatches = [
 
 const emptyData = { players: [], matches: [], predictions: [], leaderboard: [] }
 const demoData = { ...emptyData, matches: demoMatches }
-const HERO_SURFACE = 'relative overflow-hidden border-b border-base-300 bg-base-100 text-base-content'
+const HERO_SURFACE = 'relative overflow-visible border-b border-base-300 bg-base-100 text-base-content'
 const HERO_STYLE = {
   backgroundImage: [
     'linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 24%, transparent), transparent 52%)',
@@ -119,6 +133,19 @@ function readStoredData() {
 
 function writeStoredData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+}
+
+function initialThemePreference() {
+  const stored = localStorage.getItem(THEME_KEY)
+  return ['light', 'dark', 'system'].includes(stored) ? stored : 'system'
+}
+
+function preferredSystemTheme() {
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+}
+
+function resolvedTheme(preference, systemTheme) {
+  return preference === 'system' ? systemTheme : preference
 }
 
 // ---------------------------------------------------------------------------
@@ -160,11 +187,35 @@ function userDisplayName(record) {
   return cleanName(record?.name || '') || 'Player'
 }
 
-function normalizeUser(record) {
+function normalizeWorkspace(record) {
+  return {
+    id: record.id,
+    name: cleanName(record.name || '') || 'Workspace',
+  }
+}
+
+function normalizeUser(record, role = 'member', membershipId = '') {
   return {
     id: record.id,
     name: userDisplayName(record),
     isAdmin: Boolean(record.is_admin),
+    role,
+    membershipId,
+  }
+}
+
+function normalizeMembership(record) {
+  const user = record.expand?.user || record.user
+  const userId = relationId(record.user)
+  return {
+    id: record.id,
+    workspace: relationId(record.workspace),
+    role: record.role || 'member',
+    player: normalizeUser(
+      typeof user === 'string' ? { id: userId, name: '' } : user,
+      record.role || 'member',
+      record.id,
+    ),
   }
 }
 
@@ -172,6 +223,7 @@ function normalizePrediction(record) {
   const user = record.user ?? record.player
   return {
     id:     record.id,
+    workspace: relationId(record.workspace),
     player: typeof user === 'string' ? user : user?.id,
     match:  typeof record.match  === 'string' ? record.match  : record.match?.id,
     pick:   record.pick,
@@ -181,7 +233,9 @@ function normalizePrediction(record) {
 function normalizeLeaderboard(record) {
   const user = record.user ?? record.player
   return {
-    id:          typeof user === 'string' ? user : user?.id || record.id,
+    id:          record.id,
+    player:      typeof user === 'string' ? user : user?.id || record.id,
+    workspace:   relationId(record.workspace),
     name:        record.name || userDisplayName(user),
     points:      Number(record.points) || 0,
     correct:     Number(record.correct) || 0,
@@ -217,6 +271,16 @@ function isLocked(match) {
 
 function sortMatches(matches) {
   return [...matches].sort((a, b) => new Date(a.kickoff) - new Date(b.kickoff))
+}
+
+function workspaceNameFromPath() {
+  const [segment = ''] = window.location.pathname.split('/').filter(Boolean)
+  if (!segment) return ''
+  try { return decodeURIComponent(segment) } catch { return segment }
+}
+
+function relationId(value) {
+  return typeof value === 'string' ? value : value?.id
 }
 
 function friendlyAuthError(err) {
@@ -259,25 +323,64 @@ async function loadPocketBaseCollection(collection, options, mapRecord) {
   }
 }
 
-async function loadPocketBaseData() {
-  const [players, matches, predictions, leaderboard] = await Promise.all([
-    loadPocketBaseCollection('users', { sort: 'created' }, normalizeUser),
+async function loadWorkspaceByName(name) {
+  if (!name) return null
+
+  try {
+    const escapedName = escapePbFilterValue(name)
+    const workspace = await pb.collection('workspaces')
+      .getFirstListItem(`name="${escapedName}"`)
+    return normalizeWorkspace(workspace)
+  } catch (err) {
+    if (err?.status === 404) return null
+    throw collectionAccessError('workspaces', 'read', err)
+  }
+}
+
+async function loadPocketBaseData(workspaceId) {
+  const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
+  const [memberships, matches, predictions, leaderboard] = await Promise.all([
+    loadPocketBaseCollection('memberships', { filter: workspaceFilter, sort: 'created', expand: 'user' }, normalizeMembership),
     loadPocketBaseCollection('matches', { sort: 'kickoff' }, normalizeMatch),
-    loadPocketBaseCollection('predictions', { sort: 'created' }, normalizePrediction),
-    loadPocketBaseCollection('leaderboard', { sort: 'rank' }, normalizeLeaderboard),
+    loadPocketBaseCollection('predictions', { filter: workspaceFilter, sort: 'created' }, normalizePrediction),
+    loadPocketBaseCollection('leaderboard', { filter: workspaceFilter, sort: 'rank' }, normalizeLeaderboard),
   ])
+  const players = memberships.map((membership) => membership.player)
   return { players, matches, predictions, leaderboard }
 }
 
-async function loadPocketBaseGuestData() {
-  return loadPocketBaseData()
+async function loadPocketBaseGuestData(workspaceId) {
+  return loadPocketBaseData(workspaceId)
 }
 
-// The authenticated user is the pool player. There is no separate players
-// collection in live PocketBase mode.
-function resolvePlayerForAuth() {
+// The authenticated user is a pool player only after joining the active workspace.
+async function resolvePlayerForAuth(workspaceId) {
   const authRecord = pb.authStore.record
-  return authRecord?.id ? normalizeUser(authRecord) : null
+  if (!authRecord?.id || !workspaceId) return null
+
+  const eu = escapePbFilterValue(authRecord.id)
+  const ew = escapePbFilterValue(workspaceId)
+  const existing = await pb.collection('memberships')
+    .getFirstListItem(`workspace="${ew}" && user="${eu}"`, { expand: 'user' })
+    .catch(() => null)
+
+  if (existing) return normalizeMembership(existing).player
+  return null
+}
+
+async function joinWorkspaceForAuth(workspaceId) {
+  const authRecord = pb.authStore.record
+  if (!authRecord?.id || !workspaceId) return null
+
+  const existing = await resolvePlayerForAuth(workspaceId)
+  if (existing) return existing
+
+  const membership = await pb.collection('memberships').create({
+    workspace: workspaceId,
+    user: authRecord.id,
+    role: 'member',
+  })
+  return normalizeUser(authRecord, membership.role || 'member', membership.id)
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +415,11 @@ function App() {
   const [backend,       setBackend]       = useState('loading')
   const [data,          setData]          = useState(emptyData)
   const [player,        setPlayer]        = useState(null)
+  const [authUser,      setAuthUser]      = useState(null)
+  const [workspaceName] = useState(() => workspaceNameFromPath())
+  const [activeWorkspace, setActiveWorkspace] = useState(null)
+  const [themePreference, setThemePreference] = useState(initialThemePreference)
+  const [systemTheme, setSystemTheme] = useState(preferredSystemTheme)
   const [savingPick,    setSavingPick]    = useState('')
   const [adminPin,      setAdminPin]      = useState('')
   const [adminUnlocked, setAdminUnlocked] = useState(false)
@@ -328,6 +436,9 @@ function App() {
   const [authName,     setAuthName]     = useState('')
   const [authEmail,    setAuthEmail]    = useState('')
   const [authPassword, setAuthPassword] = useState('')
+  const [joinModal,    setJoinModal]    = useState(false)
+  const [joinLoading,  setJoinLoading]  = useState(false)
+  const [joinError,    setJoinError]    = useState('')
 
   // Demo mode name (used when PocketBase is unreachable)
   const [demoName, setDemoName] = useState('')
@@ -345,8 +456,25 @@ function App() {
     )
   }, [data.predictions, player])
   const completedMatches = matches.filter((m) => m.result).length
-  const adminAllowed = Boolean(player?.isAdmin || adminUnlocked)
+  const adminAllowed = Boolean(player?.isAdmin || ['owner', 'admin'].includes(player?.role) || adminUnlocked)
+  const theme = resolvedTheme(themePreference, systemTheme)
+  const canJoinWorkspace = backend === 'pocketbase' && activeWorkspace && authUser && !player
   const [pageParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
+
+  useEffect(() => {
+    const query = window.matchMedia?.('(prefers-color-scheme: dark)')
+    if (!query) return undefined
+
+    const updateSystemTheme = () => setSystemTheme(query.matches ? 'dark' : 'light')
+    updateSystemTheme()
+    query.addEventListener('change', updateSystemTheme)
+    return () => query.removeEventListener('change', updateSystemTheme)
+  }, [])
+
+  function changeThemePreference(preference) {
+    setThemePreference(preference)
+    localStorage.setItem(THEME_KEY, preference)
+  }
 
   // ---------------------------------------------------------------------------
   // Startup: restore session or detect backend
@@ -355,34 +483,45 @@ function App() {
     let active = true
 
     async function init() {
-      // 1. Try to restore an existing PocketBase session
-      if (pb.authStore.isValid) {
-        try {
-          await pb.collection('users').authRefresh()
-          if (!active) return
-          const resolvedPlayer = await resolvePlayerForAuth()
-          if (resolvedPlayer && active) {
+      // 1. Resolve the workspace from /WORKSPACE_NAME, then restore an existing session.
+      try {
+        const workspace = await loadWorkspaceByName(workspaceName)
+        if (!active) return
+        setActiveWorkspace(workspace)
+
+        if (!workspace) {
+          setData(emptyData)
+          setBackend('pocketbase')
+          return
+        }
+
+        if (pb.authStore.isValid) {
+          try {
+            await pb.collection('users').authRefresh()
+            if (!active) return
+            setAuthUser(normalizeUser(pb.authStore.record))
+            const resolvedPlayer = await resolvePlayerForAuth(workspace.id)
+            if (!active) return
             setPlayer(resolvedPlayer)
-            setData(await loadPocketBaseData())
+            setData(await loadPocketBaseData(workspace.id))
             setBackend('pocketbase')
             return
+          } catch {
+            pb.authStore.clear()
+            setAuthUser(null)
+            setPlayer(null)
           }
-        } catch {
-          pb.authStore.clear()
         }
-      }
 
-      if (!active) return
-
-      // 2. Check if PocketBase is reachable.
-      // A network-level failure has err.status === 0 (or no status).
-      // Guests should still see public PocketBase pool data when collection rules allow it.
-      try {
-        const publicData = await loadPocketBaseGuestData()
         if (!active) return
-        setData(publicData)
+        setData(await loadPocketBaseGuestData(workspace.id))
         setBackend('pocketbase')
       } catch (err) {
+        if (pb.authStore.isValid) {
+          pb.authStore.clear()
+        }
+        setAuthUser(null)
+        setPlayer(null)
         if (!active) return
         if (err?.status && err.status !== 0) {
           // PocketBase returned an HTTP response (e.g. 401/403) — it IS running, just needs auth
@@ -400,20 +539,26 @@ function App() {
 
     init()
     return () => { active = false }
-  }, [])
+  }, [workspaceName])
 
   // ---------------------------------------------------------------------------
   // PocketBase auth actions
   // ---------------------------------------------------------------------------
   async function handleLogin(event) {
     event.preventDefault()
+    if (!activeWorkspace) {
+      setAuthError('Open a valid workspace URL before signing in.')
+      return
+    }
     setAuthLoading(true)
     setAuthError('')
     try {
       await pb.collection('users').authWithPassword(authEmail, authPassword)
-      const resolvedPlayer = await resolvePlayerForAuth()
+      const resolvedAuthUser = normalizeUser(pb.authStore.record)
+      const resolvedPlayer = await resolvePlayerForAuth(activeWorkspace.id)
+      setAuthUser(resolvedAuthUser)
       setPlayer(resolvedPlayer)
-      setData(await loadPocketBaseData())
+      setData(await loadPocketBaseData(activeWorkspace.id))
       setBackend('pocketbase')
       setAuthModal(false)
     } catch (err) {
@@ -425,6 +570,10 @@ function App() {
 
   async function handleSignup(event) {
     event.preventDefault()
+    if (!activeWorkspace) {
+      setAuthError('Open a valid workspace URL before creating an account.')
+      return
+    }
     setAuthLoading(true)
     setAuthError('')
     try {
@@ -435,9 +584,11 @@ function App() {
         passwordConfirm: authPassword,
       })
       await pb.collection('users').authWithPassword(authEmail, authPassword)
-      const resolvedPlayer = await resolvePlayerForAuth()
+      const resolvedAuthUser = normalizeUser(pb.authStore.record)
+      const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
+      setAuthUser(resolvedAuthUser)
       setPlayer(resolvedPlayer)
-      setData(await loadPocketBaseData())
+      setData(await loadPocketBaseData(activeWorkspace.id))
       setBackend('pocketbase')
       setAuthModal(false)
       toast.success(`Welcome, ${authName}!`)
@@ -456,16 +607,40 @@ function App() {
 
   function logout() {
     pb.authStore.clear()
+    setAuthUser(null)
     setPlayer(null)
+    setJoinModal(false)
     setActivePage('predictions')
     setAdminUnlocked(false)
     if (backend === 'pocketbase') {
-      loadPocketBaseGuestData()
+      loadPocketBaseGuestData(activeWorkspace?.id)
         .then(setData)
         .catch(() => setData(emptyData))
     } else {
       setData(readStoredData())
     }
+  }
+
+  async function joinWorkspace() {
+    if (!activeWorkspace || !authUser) return
+    setJoinLoading(true)
+    setJoinError('')
+    try {
+      const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
+      setPlayer(resolvedPlayer)
+      setData(await loadPocketBaseData(activeWorkspace.id))
+      setJoinModal(false)
+      toast.success(`Joined ${activeWorkspace.name}.`)
+    } catch (err) {
+      setJoinError(friendlyAuthError(err))
+    } finally {
+      setJoinLoading(false)
+    }
+  }
+
+  function openJoinModal() {
+    setJoinError('')
+    setJoinModal(true)
   }
 
   // ---------------------------------------------------------------------------
@@ -494,21 +669,31 @@ function App() {
   }
 
   async function savePrediction(match, pick) {
-    if (!player || isLocked(match)) return
+    if (isLocked(match)) return
+    if (!player) {
+      if (authUser && activeWorkspace) openJoinModal()
+      else openAuth('signup')
+      return
+    }
+    if (backend === 'pocketbase' && !activeWorkspace) {
+      toast.error('Open a valid workspace URL before saving picks.')
+      return
+    }
     setSavingPick(`${match.id}-${pick}`)
 
     try {
       if (backend === 'pocketbase') {
         const ep = escapePbFilterValue(player.id)
         const em = escapePbFilterValue(match.id)
+        const ew = escapePbFilterValue(activeWorkspace.id)
         const existing = await pb.collection('predictions')
-          .getFirstListItem(`user="${ep}" && match="${em}"`).catch(() => null)
+          .getFirstListItem(`workspace="${ew}" && user="${ep}" && match="${em}"`).catch(() => null)
         if (existing) {
           await pb.collection('predictions').update(existing.id, { pick })
         } else {
-          await pb.collection('predictions').create({ user: player.id, match: match.id, pick })
+          await pb.collection('predictions').create({ workspace: activeWorkspace.id, user: player.id, match: match.id, pick })
         }
-        setData(await loadPocketBaseData())
+        setData(await loadPocketBaseData(activeWorkspace.id))
         toast.success(`Saved: ${pickLabel(match, pick)} — ${match.home} vs ${match.away}`)
         return
       }
@@ -534,7 +719,7 @@ function App() {
     try {
       if (backend === 'pocketbase') {
         await pb.collection('matches').create(match)
-        setData(await loadPocketBaseData())
+        setData(await loadPocketBaseData(activeWorkspace?.id))
       } else {
         syncLocal((c) => ({ ...c, matches: [...c.matches, { ...match, id: createId('match') }] }))
       }
@@ -549,7 +734,7 @@ function App() {
     try {
       if (backend === 'pocketbase') {
         await pb.collection('matches').update(match.id, patch)
-        setData(await loadPocketBaseData())
+        setData(await loadPocketBaseData(activeWorkspace?.id))
       } else {
         syncLocal((c) => ({ ...c, matches: c.matches.map((m) => m.id === match.id ? { ...m, ...patch } : m) }))
       }
@@ -563,7 +748,7 @@ function App() {
     try {
       if (backend === 'pocketbase') {
         await pb.collection('matches').delete(match.id)
-        setData(await loadPocketBaseData())
+        setData(await loadPocketBaseData(activeWorkspace?.id))
       } else {
         syncLocal((c) => ({
           ...c,
@@ -591,7 +776,7 @@ function App() {
   // Loading state — waiting to know if PocketBase is reachable
   if (backend === 'loading') {
     return (
-      <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`} style={HERO_STYLE} data-theme="nord">
+      <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`} style={HERO_STYLE} data-theme={theme}>
         <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE} />
         <div className="relative flex flex-col items-center">
           <Sparkles size={28} className="mb-4 opacity-70" />
@@ -603,7 +788,7 @@ function App() {
 
   // Main app — always shown (guests can browse; auth modal appears on demand)
   return (
-    <div className="min-h-screen bg-base-200 text-base-content" data-theme="nord">
+    <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
       {/* Auth modal */}
       {authModal && (
         <div
@@ -615,9 +800,25 @@ function App() {
             name={authName}         setName={setAuthName}
             email={authEmail}       setEmail={setAuthEmail}
             password={authPassword} setPassword={setAuthPassword}
+            workspaceName={activeWorkspace?.name}
             error={authError} loading={authLoading}
             onLogin={handleLogin} onSignup={handleSignup}
             onClose={() => setAuthModal(false)}
+          />
+        </div>
+      )}
+      {joinModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setJoinModal(false) }}
+        >
+          <JoinWorkspaceModal
+            workspaceName={activeWorkspace?.name}
+            userName={authUser?.name}
+            error={joinError}
+            loading={joinLoading}
+            onJoin={joinWorkspace}
+            onClose={() => setJoinModal(false)}
           />
         </div>
       )}
@@ -628,7 +829,7 @@ function App() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-base-content/55">
-                 #FUN-SPORTS · CT Prediction Pool
+                 {activeWorkspace?.name || workspaceName || 'Prediction Pool'}
               </div>
               <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
                 World Cup 2026
@@ -636,7 +837,10 @@ function App() {
             </div>
             <HeaderUserMenu
               backend={backend}
-              player={player}
+              player={player || authUser}
+              workspace={activeWorkspace}
+              themePreference={themePreference}
+              onThemeChange={changeThemePreference}
               onLogin={() => openAuth('login')}
               onSignup={() => openAuth('signup')}
               onLogout={backend === 'pocketbase' ? logout : () => {
@@ -664,15 +868,28 @@ function App() {
             <DemoRegistrationCard name={demoName} setName={setDemoName} onSubmit={registerDemo} />
           )}
 
-          {activePage === 'predictions' && (
+          {backend === 'pocketbase' && !activeWorkspace && (
+            <MissingWorkspaceCard workspaceName={workspaceName} />
+          )}
+
+          {canJoinWorkspace && (
+            <JoinWorkspaceCard
+              workspaceName={activeWorkspace.name}
+              userName={authUser.name}
+              onJoin={openJoinModal}
+            />
+          )}
+
+          {(backend === 'demo' || activeWorkspace) && activePage === 'predictions' && (
             <PredictionsPage
               matches={matches}
               playerPredictions={playerPredictions}
               savingPick={savingPick} onPick={savePrediction}
-              onShowAuth={backend === 'pocketbase' && !player ? () => openAuth('signup') : null}
+              onShowAuth={backend === 'pocketbase' && !authUser ? () => openAuth('signup') : null}
+              onShowJoin={canJoinWorkspace ? openJoinModal : null}
             />
           )}
-          {activePage === 'leaderboard' && (
+          {(backend === 'demo' || activeWorkspace) && activePage === 'leaderboard' && (
             <LeaderboardPage leaderboard={leaderboard} matches={matches} predictions={data.predictions} />
           )}
           {activePage === 'admin' && (
@@ -686,7 +903,13 @@ function App() {
         </section>
 
         <aside className="space-y-4">
-          <UserStatsCard player={player} stats={playerStats} />
+          <UserStatsCard
+            player={player}
+            authUser={authUser}
+            stats={playerStats}
+            workspaceName={activeWorkspace?.name}
+            onJoin={backend === 'pocketbase' && activeWorkspace ? (authUser ? openJoinModal : () => openAuth('signup')) : null}
+          />
 
           {/* Pool status */}
           <Panel>
@@ -718,7 +941,7 @@ function App() {
 // ===========================================================================
 // AuthCard — rendered inside the backdrop modal
 // ===========================================================================
-function AuthCard({ view, setView, name, setName, email, setEmail, password, setPassword, error, loading, onLogin, onSignup, onClose }) {
+function AuthCard({ view, setView, name, setName, email, setEmail, password, setPassword, workspaceName, error, loading, onLogin, onSignup, onClose }) {
   const [formParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
 
   return (
@@ -728,7 +951,9 @@ function AuthCard({ view, setView, name, setName, email, setEmail, password, set
         <div>
           <h2 className="text-xl font-black">{view === 'login' ? 'Welcome back' : 'Join the pool'}</h2>
           <p className="mt-0.5 text-xs text-base-content/50">
-            {view === 'login' ? 'Sign in to submit picks and see your score.' : 'Create an account to start picking results.'}
+            {view === 'login'
+              ? `Sign in to submit picks${workspaceName ? ` for ${workspaceName}` : ''}.`
+              : `Create an account${workspaceName ? ` for ${workspaceName}` : ''}.`}
           </p>
         </div>
         <button type="button" onClick={onClose} className="ml-4 rounded-lg p-1 text-base-content/30 hover:text-base-content/60">✕</button>
@@ -799,6 +1024,39 @@ function AuthField({ label, type, value, onChange, placeholder, required, minLen
   )
 }
 
+function JoinWorkspaceModal({ workspaceName, userName, error, loading, onJoin, onClose }) {
+  return (
+    <div className="w-full max-w-sm rounded-2xl border border-base-200 bg-base-100 p-6 shadow-2xl">
+      <div className="mb-5 flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-black">Join this pool?</h2>
+          <p className="mt-0.5 text-xs text-base-content/50">
+            {userName || 'You'} can browse {workspaceName || 'this workspace'} without joining, but picks require membership.
+          </p>
+        </div>
+        <button type="button" onClick={onClose} className="ml-4 rounded-lg p-1 text-base-content/30 hover:text-base-content/60">✕</button>
+      </div>
+
+      {error && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-error/30 bg-error/10 px-3 py-2.5 text-xs font-semibold text-error">
+          <XCircle size={14} className="shrink-0" />
+          {error}
+        </div>
+      )}
+
+      <div className="grid gap-2">
+        <button type="button" disabled={loading} className="btn btn-primary w-full rounded-xl font-black" onClick={onJoin}>
+          {loading && <span className="loading loading-spinner loading-sm" />}
+          Join pool
+        </button>
+        <button type="button" className="btn btn-ghost rounded-xl font-bold" onClick={onClose}>
+          Keep browsing
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ===========================================================================
 // Shared components
 // ===========================================================================
@@ -847,14 +1105,36 @@ function PlayerAvatar({ name, size = 36, className = '' }) {
   )
 }
 
-function HeaderUserMenu({ backend, player, onLogin, onSignup, onLogout }) {
+function HeaderUserMenu({ backend, player, workspace, themePreference, onThemeChange, onLogin, onSignup, onLogout }) {
   const [menuParent] = useAutoAnimate({ duration: 160, easing: 'ease-out' })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
+  const themeOptions = [
+    { value: 'system', label: 'System', icon: Monitor },
+    { value: 'light', label: 'Light', icon: Sun },
+    { value: 'dark', label: 'Dark', icon: Moon },
+  ]
+
+  useEffect(() => {
+    if (!menuOpen) return undefined
+
+    function closeOnOutsidePointer(event) {
+      if (!menuRef.current?.contains(event.target)) {
+        setMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+  }, [menuOpen])
 
   return (
-    <div className="dropdown dropdown-end self-start">
+    <div ref={menuRef} className="relative z-50 self-start">
       <button
         type="button"
-        tabIndex={0}
+        onClick={() => setMenuOpen((open) => !open)}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
         className="btn btn-ghost h-auto min-h-0 rounded-full border border-base-content/10 bg-base-100/70 py-1 pl-1 pr-2.5 text-base-content shadow-xs hover:border-primary/25 hover:bg-base-100"
       >
         <PlayerAvatar name={player?.name || 'Guest'} size={32} />
@@ -863,24 +1143,57 @@ function HeaderUserMenu({ backend, player, onLogin, onSignup, onLogout }) {
         </span>
         <Menu size={15} className="shrink-0 text-base-content/45" />
       </button>
-      <ul ref={menuParent} tabIndex={0} className="menu dropdown-content z-20 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-md">
-        <li className="menu-title">
-          <span className="truncate">{player?.name || 'Guest'}</span>
-        </li>
-        {backend === 'pocketbase' && !player ? (
-          <>
-            <li><button type="button" onClick={onLogin}>Sign in</button></li>
-            <li><button type="button" onClick={onSignup}>Join the pool</button></li>
-          </>
-        ) : (
-          <li>
-            <button type="button" className="text-error" onClick={onLogout}>
-              <LogOut size={16} />
-              {backend === 'pocketbase' ? 'Sign out' : 'Switch player'}
-            </button>
+      {menuOpen && (
+        <ul
+          ref={menuParent}
+          className="menu absolute right-0 top-full z-50 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
+          role="menu"
+        >
+          {backend === 'pocketbase' && (
+            <li className="menu-title">
+              <span className="truncate">{workspace?.name || 'No workspace'}</span>
+            </li>
+          )}
+          <li className="menu-title">
+            <span className="truncate">{player?.name || 'Guest'}</span>
           </li>
-        )}
-      </ul>
+          <li className="menu-title mt-1">
+            <span>Theme</span>
+          </li>
+          <li className="px-2 pb-1">
+            <div className="flex items-center gap-2 rounded-lg bg-base-100 py-1.5">
+              {themeOptions.map(({ value, icon: Icon }) => (
+                value === themePreference ? <Icon key={value} size={15} className="shrink-0 text-base-content/50" /> : null
+              ))}
+              <select
+                value={themePreference}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+                onChange={(event) => onThemeChange(event.target.value)}
+                className="select select-bordered select-sm h-8 min-h-8 flex-1 bg-base-100 text-xs font-bold"
+                aria-label="Theme"
+              >
+                {themeOptions.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </li>
+          {backend === 'pocketbase' && !player ? (
+            <>
+              <li><button type="button" onClick={() => { setMenuOpen(false); onLogin() }}>Sign in</button></li>
+              <li><button type="button" onClick={() => { setMenuOpen(false); onSignup() }}>Join the pool</button></li>
+            </>
+          ) : (
+            <li>
+              <button type="button" className="text-error" onClick={() => { setMenuOpen(false); onLogout() }}>
+                <LogOut size={16} />
+                {backend === 'pocketbase' ? 'Sign out' : 'Switch player'}
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   )
 }
@@ -903,7 +1216,37 @@ function TeamCrest({ name, src }) {
   )
 }
 
-function UserStatsCard({ player, stats }) {
+function UserStatsCard({ player, authUser, stats, workspaceName, onJoin }) {
+  const displayUser = player || authUser
+
+  if (!player) {
+    return (
+      <Panel>
+        <div className="mb-4 flex min-w-0 items-center gap-3">
+          <PlayerAvatar name={displayUser?.name || 'Guest'} size={38} className="border border-base-300" />
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-wide text-base-content/40">Your stats</p>
+            <h2 className="truncate text-xl font-black">{displayUser?.name || 'Guest'}</h2>
+          </div>
+        </div>
+        <div className="rounded-xl border border-dashed border-base-300 bg-base-200/50 p-4 text-center">
+          <Trophy className="mx-auto mb-2 text-primary/45" size={28} />
+          <h3 className="font-black">No stats yet</h3>
+          <p className="mt-1 text-sm text-base-content/55">
+            {workspaceName
+              ? `Join ${workspaceName} to submit picks and start tracking your score.`
+              : 'Join a workspace to submit picks and start tracking your score.'}
+          </p>
+          {onJoin && (
+            <button type="button" className="btn btn-primary btn-sm mt-4 rounded-xl font-black" onClick={onJoin}>
+              Join now
+            </button>
+          )}
+        </div>
+      </Panel>
+    )
+  }
+
   return (
     <Panel>
       <div className="mb-4 flex items-center justify-between gap-3">
@@ -973,10 +1316,50 @@ function DemoRegistrationCard({ name, setName, onSubmit }) {
   )
 }
 
+function JoinWorkspaceCard({ workspaceName, userName, onJoin }) {
+  return (
+    <Panel className="mb-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+            <UserPlus size={13} />
+            Not a member yet
+          </div>
+          <h3 className="text-lg font-black">Join {workspaceName} to submit picks</h3>
+          <p className="mt-1 text-sm text-base-content/55">
+            Signed in as {userName || 'a user'}. You can keep browsing, or join this pool when you are ready.
+          </p>
+        </div>
+        <button type="button" className="btn btn-primary rounded-xl font-black" onClick={onJoin}>
+          Join pool
+        </button>
+      </div>
+    </Panel>
+  )
+}
+
+function MissingWorkspaceCard({ workspaceName }) {
+  return (
+    <Panel>
+      <div className="py-8 text-center">
+        <Trophy className="mx-auto mb-3 text-primary/40" size={32} />
+        <h3 className="text-lg font-black">
+          {workspaceName ? 'Workspace not found' : 'Open a workspace URL'}
+        </h3>
+        <p className="mx-auto mt-1 max-w-md text-sm text-base-content/50">
+          {workspaceName
+            ? `No PocketBase workspace exists with the name "${workspaceName}".`
+            : 'Use a URL like /Family%20Pool where the path matches a PocketBase workspace name.'}
+        </p>
+      </div>
+    </Panel>
+  )
+}
+
 // ===========================================================================
 // Predictions page
 // ===========================================================================
-function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onShowAuth }) {
+function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onShowAuth, onShowJoin }) {
   const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
   const [matchesParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
   const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
@@ -1030,6 +1413,7 @@ function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onSho
             savingPick={savingPick}
             onPick={onPick}
             onShowAuth={onShowAuth}
+            onShowJoin={onShowJoin}
           />
         ))}
       </div>
@@ -1069,14 +1453,14 @@ function StageTabs({ activeStage, matches, onChange }) {
   )
 }
 
-function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth }) {
+function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth, onShowJoin }) {
   const locked = isLocked(match)
   const isFinal = Boolean(match.result)
   const showScore = hasMatchScore(match)
   const pickIsCorrect = isFinal && prediction?.pick === match.result
   const pickStatus = prediction
     ? `${isFinal ? (pickIsCorrect ? 'Correct pick' : 'Missed pick') : 'Your pick'}: ${pickLabel(match, prediction.pick)}`
-    : (onShowAuth ? 'Sign in to pick' : 'No pick yet')
+    : (onShowAuth ? 'Sign in to pick' : onShowJoin ? 'Join to pick' : 'No pick yet')
   const pickOptions = [
     { pick: 'home', label: 'Home', name: match.home },
     { pick: 'draw', label: 'Draw', name: '—' },
@@ -1125,6 +1509,7 @@ function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth
             const loading  = savingPick === `${match.id}-${pick}`
             const handleClick = () => {
               if (onShowAuth) { onShowAuth(); return }
+              if (onShowJoin) { onShowJoin(); return }
               onPick(match, pick)
             }
             return (

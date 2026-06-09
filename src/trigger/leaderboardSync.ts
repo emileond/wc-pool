@@ -7,6 +7,21 @@ type UserRecord = {
   name?: string;
 };
 
+type WorkspaceRecord = {
+  id: string;
+  name?: string;
+};
+
+type MembershipRecord = {
+  id: string;
+  workspace?: string | { id: string };
+  user?: string | UserRecord;
+  role?: "owner" | "admin" | "member";
+  expand?: {
+    user?: UserRecord;
+  };
+};
+
 type MatchRecord = {
   id: string;
   result?: "home" | "draw" | "away" | "";
@@ -14,6 +29,7 @@ type MatchRecord = {
 
 type PredictionRecord = {
   id: string;
+  workspace?: string | { id: string };
   user?: string | { id: string };
   player?: string | { id: string };
   match?: string | { id: string };
@@ -22,6 +38,7 @@ type PredictionRecord = {
 
 type LeaderboardRecord = {
   id: string;
+  workspace?: string | { id: string };
   user?: string | { id: string };
   name?: string;
   points?: number;
@@ -32,6 +49,7 @@ type LeaderboardRecord = {
 };
 
 type LeaderboardRow = {
+  workspace: string;
   user: string;
   name: string;
   points: number;
@@ -71,7 +89,13 @@ function cleanName(name?: string) {
   return name?.trim().replace(/\s+/g, " ") || "Player";
 }
 
-function calculateRows(users: UserRecord[], matches: MatchRecord[], predictions: PredictionRecord[]) {
+function membershipUser(membership: MembershipRecord) {
+  const expandedUser = membership.expand?.user;
+  if (expandedUser) return expandedUser;
+  return typeof membership.user === "string" ? { id: membership.user } : membership.user;
+}
+
+function calculateRows(workspaceId: string, memberships: MembershipRecord[], matches: MatchRecord[], predictions: PredictionRecord[]) {
   const finals = new Map(matches.filter((m) => m.result).map((m) => [m.id, m]));
   const predictionsByUser = new Map<string, PredictionRecord[]>();
 
@@ -84,7 +108,9 @@ function calculateRows(users: UserRecord[], matches: MatchRecord[], predictions:
     predictionsByUser.set(userId, userPredictions);
   }
 
-  return users
+  return memberships
+    .map(membershipUser)
+    .filter((user): user is UserRecord => Boolean(user?.id))
     .map((user) => {
       const userPredictions = predictionsByUser.get(user.id) || [];
       const correct = userPredictions.filter((prediction) => {
@@ -95,6 +121,7 @@ function calculateRows(users: UserRecord[], matches: MatchRecord[], predictions:
       const predictionsCount = userPredictions.length;
 
       return {
+        workspace: workspaceId,
         user: user.id,
         name: cleanName(user.name),
         points: correct * 3,
@@ -133,15 +160,34 @@ async function upsertLeaderboardRow(
   return "created";
 }
 
-async function syncLeaderboardRows(reason: string) {
-  const pb = await pocketBaseClient(`leaderboard:${reason}`);
-  const [users, matches, predictions, leaderboardRecords] = await Promise.all([
-    pb.collection("users").getFullList<UserRecord>({ sort: "created" }),
-    pb.collection("matches").getFullList<MatchRecord>({ sort: "kickoff" }),
-    pb.collection("predictions").getFullList<PredictionRecord>({ sort: "created" }),
-    pb.collection("leaderboard").getFullList<LeaderboardRecord>({ sort: "rank" }),
+function escapePbFilterValue(value: string) {
+  return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+}
+
+async function syncWorkspaceLeaderboard(
+  pb: PocketBase,
+  workspace: WorkspaceRecord,
+  matches: MatchRecord[],
+): Promise<Record<UpsertResult, number> & { rows: number; deleted: number }> {
+  const workspaceId = escapePbFilterValue(workspace.id);
+  const workspaceFilter = `workspace="${workspaceId}"`;
+  const [memberships, predictions, leaderboardRecords] = await Promise.all([
+    pb.collection("memberships").getFullList<MembershipRecord>({
+      filter: workspaceFilter,
+      sort: "created",
+      expand: "user",
+    }),
+    pb.collection("predictions").getFullList<PredictionRecord>({
+      filter: workspaceFilter,
+      sort: "created",
+    }),
+    pb.collection("leaderboard").getFullList<LeaderboardRecord>({
+      filter: workspaceFilter,
+      sort: "rank",
+    }),
   ]);
-  const rows = calculateRows(users, matches, predictions);
+
+  const rows = calculateRows(workspace.id, memberships, matches, predictions);
   const userIds = new Set(rows.map((row) => row.user));
   const existingByUser = new Map(
     leaderboardRecords
@@ -163,18 +209,52 @@ async function syncLeaderboardRows(reason: string) {
     }
   }
 
-  logger.log("Leaderboard sync complete", {
-    reason,
+  return {
     rows: rows.length,
     deleted,
+    ...totals,
+  };
+}
+
+async function syncLeaderboardRows(reason: string, workspaceId?: string) {
+  const pb = await pocketBaseClient(`leaderboard:${reason}`);
+  const workspaceFilter = workspaceId ? `id="${escapePbFilterValue(workspaceId)}"` : undefined;
+  const [workspaces, matches] = await Promise.all([
+    pb.collection("workspaces").getFullList<WorkspaceRecord>({
+      filter: workspaceFilter,
+      sort: "created",
+    }),
+    pb.collection("matches").getFullList<MatchRecord>({ sort: "kickoff" }),
+  ]);
+  const totals: Record<UpsertResult, number> & { rows: number; deleted: number } = {
+    rows: 0,
+    deleted: 0,
+    created: 0,
+    updated: 0,
+    skipped: 0,
+  };
+
+  for (const workspace of workspaces) {
+    const workspaceTotals = await syncWorkspaceLeaderboard(pb, workspace, matches);
+    totals.rows += workspaceTotals.rows;
+    totals.deleted += workspaceTotals.deleted;
+    totals.created += workspaceTotals.created;
+    totals.updated += workspaceTotals.updated;
+    totals.skipped += workspaceTotals.skipped;
+  }
+
+  logger.log("Leaderboard sync complete", {
+    reason,
+    workspaces: workspaces.length,
+    workspaceId,
     ...totals,
   });
 
   return {
     ok: true,
     reason,
-    rows: rows.length,
-    deleted,
+    workspaces: workspaces.length,
+    workspaceId,
     ...totals,
   };
 }
@@ -184,9 +264,9 @@ export const syncLeaderboard = task({
   retry: {
     maxAttempts: 1,
   },
-  run: async (payload: { reason?: string } = {}) => {
+  run: async (payload: { reason?: string; workspaceId?: string } = {}) => {
     try {
-      return await syncLeaderboardRows(payload.reason || "manual");
+      return await syncLeaderboardRows(payload.reason || "manual", payload.workspaceId);
     } catch (err) {
       logger.error("Leaderboard sync failed", {
         reason: payload.reason || "manual",

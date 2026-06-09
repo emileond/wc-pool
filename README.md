@@ -20,14 +20,43 @@ If PocketBase is not available, the app uses local demo storage so the interface
 
 ## PocketBase Collections
 
-Use PocketBase's built-in `users` auth collection for pool players. Add a required `name` text field to `users`, then create these collections:
+Use PocketBase's built-in `users` auth collection for player accounts. A user can join multiple pools through `memberships`; each pool is a row in `workspaces`.
+
+Workspace routing is URL-driven. The first path segment must match `workspaces.name` exactly after URL decoding:
+
+```txt
+https://your-domain.com/Family%20Pool
+https://your-domain.com/OfficePool
+```
+
+When a user signs up from that URL, the app joins them to that workspace. When an existing signed-in user opens a workspace they have not joined, they can browse public data and will see a join CTA before submitting picks.
+
+Configure your host to serve the React app for workspace paths. For static hosting, `/Family%20Pool` and other workspace URLs should fall back to `index.html`.
 
 ### users
 
 - `email` auth identity field
 - `password` auth field
 - `name` text, required
-- `is_admin` bool, default `false`
+- `is_admin` bool, default `false` for global fixture sync/admin access
+
+### workspaces
+
+- `name` text, required, unique
+
+Create one row per pool/team. `name` is also the public URL segment, so avoid duplicate names and prefer URL-friendly names when possible.
+
+### memberships
+
+- `workspace` relation to `workspaces`, required
+- `user` relation to `users`, required
+- `role` select: `owner`, `admin`, `member`, default `member`
+
+Add a unique index for one membership per user per workspace:
+
+```sql
+CREATE UNIQUE INDEX idx_memberships_workspace_user ON memberships (workspace, user);
+```
 
 ### matches
 
@@ -47,13 +76,21 @@ Use PocketBase's built-in `users` auth collection for pool players. Add a requir
 
 ### predictions
 
+- `workspace` relation to `workspaces`, required
 - `user` relation to `users`, required
 - `match` relation to `matches`, required
 - `pick` select: `home`, `draw`, `away`
 
+Add a unique index so each player has one pick per match per workspace:
+
+```sql
+CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspace, user, match);
+```
+
 ### leaderboard
 
-- `user` relation to `users`, required, unique
+- `workspace` relation to `workspaces`, required
+- `user` relation to `users`, required
 - `name` text, required
 - `points` number
 - `correct` number
@@ -61,11 +98,17 @@ Use PocketBase's built-in `users` auth collection for pool players. Add a requir
 - `accuracy` number
 - `rank` number
 
+Add a unique index for one leaderboard row per user per workspace:
+
+```sql
+CREATE UNIQUE INDEX idx_leaderboard_workspace_user ON leaderboard (workspace, user);
+```
+
 ## PocketBase API Rules
 
-The app signs users in through the built-in `users` auth collection. The leaderboard and prediction ownership both use the auth user record directly, so there is no separate `players` collection.
+The app signs users in through the built-in `users` auth collection. The leaderboard and prediction ownership both use the auth user record directly, and workspace participation is tracked through `memberships`.
 
-Guests can browse fixtures and the leaderboard before signing in, so pool data needs public read access. In PocketBase, set public read rules to an empty string rule, not locked/null. Locked/null means superuser-only.
+The frontend filters every workspace-scoped query by the workspace resolved from the URL. The public read rules below preserve guest browsing. For private pools, replace public reads with stricter membership-based rules or PocketBase hooks before launch.
 
 ### users
 
@@ -75,7 +118,25 @@ Guests can browse fixtures and the leaderboard before signing in, so pool data n
 - Update rule: `@request.auth.id = id && @request.body.is_admin:changed = false`
 - Delete rule: leave locked/null for superusers only
 
-Set `is_admin` manually from the PocketBase admin dashboard for users who should manage fixtures. Do not let users update their own `is_admin` value from the app.
+Set `is_admin` manually from the PocketBase admin dashboard for users or service accounts that should manage global fixtures. Do not let users update their own `is_admin` value from the app.
+
+### workspaces
+
+- List/Search rule: empty string/public
+- View rule: empty string/public
+- Create rule: leave locked/null for superusers only
+- Update rule: leave locked/null for superusers only
+- Delete rule: leave locked/null for superusers only
+
+### memberships
+
+- List/Search rule: empty string/public
+- View rule: empty string/public
+- Create rule: `@request.auth.id != "" && user = @request.auth.id && (@request.body.role:isset = false || @request.body.role = "member")`
+- Update rule: `@request.auth.id != "" && user = @request.auth.id && @request.body.role:changed = false && @request.body.workspace:changed = false && @request.body.user:changed = false`
+- Delete rule: `@request.auth.id != "" && user = @request.auth.id`
+
+Create owner/admin memberships manually in PocketBase, or with a trusted server-side action. The app creates a `member` membership only when a user explicitly joins a workspace or signs up from that workspace URL.
 
 ### matches
 
@@ -90,7 +151,7 @@ Set `is_admin` manually from the PocketBase admin dashboard for users who should
 - List/Search rule: empty string/public
 - View rule: empty string/public
 - Create rule: `@request.auth.id != "" && user = @request.auth.id`
-- Update rule: `@request.auth.id != "" && user = @request.auth.id`
+- Update rule: `@request.auth.id != "" && user = @request.auth.id && @request.body.workspace:changed = false && @request.body.user:changed = false && @request.body.match:changed = false`
 - Delete rule: `@request.auth.id != "" && user = @request.auth.id`
 
 ### leaderboard
@@ -101,7 +162,7 @@ Set `is_admin` manually from the PocketBase admin dashboard for users who should
 - Update rule: `@request.auth.is_admin = true`
 - Delete rule: `@request.auth.is_admin = true`
 
-The in-app admin PIN is only a local fallback UI unlock. PocketBase authorization is enforced by the `matches` rules above, so a user must have `is_admin = true` to create, update, or delete fixtures in live mode.
+The in-app admin PIN is only a local fallback UI unlock. PocketBase authorization is enforced by the rules above, so live fixture and leaderboard writes require an admin/service account.
 
 ## Automated Match Sync
 
@@ -169,7 +230,7 @@ The sync intentionally fails the Trigger.dev run if football-data.org cannot be 
 
 ## Leaderboard Storage
 
-The leaderboard is stored in the `leaderboard` collection and loaded directly by the app. Trigger.dev keeps it updated in two ways:
+The leaderboard is stored in the `leaderboard` collection and loaded directly by the app. Rows are scoped by `workspace`, and Trigger.dev keeps each workspace updated in two ways:
 
 - `sync-world-cup-matches` triggers `sync-leaderboard` after match results are synced.
 - `scheduled-leaderboard-sync` runs every minute to pick up newly submitted predictions.
