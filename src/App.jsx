@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import {useAutoAnimate} from '@formkit/auto-animate/react'
-import {GTProvider, LocaleSelector, T} from 'gt-react'
+import {GTProvider, LocaleSelector, T, Var} from 'gt-react'
 import gtConfig from '../gt.config.json'
 import loadTranslations from './loadTranslations.ts'
 import {
@@ -1013,23 +1013,20 @@ function AppContent() {
     // Loading state — waiting to know if PocketBase is reachable
     if (backend === 'loading') {
         return (
-            <T>
-                <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`}
-                     style={HERO_STYLE} data-theme={theme}>
-                    <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
-                    <div className="relative flex flex-col items-center">
-                        <Sparkles size={28} className="mb-4 opacity-70"/>
-                        <p className="text-sm font-semibold text-base-content/65">Connecting…</p>
-                    </div>
+            <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`}
+                 style={HERO_STYLE} data-theme={theme}>
+                <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
+                <div className="relative flex flex-col items-center">
+                    <Sparkles size={28} className="mb-4 opacity-70"/>
+                    <p className="text-sm font-semibold text-base-content/65">Connecting…</p>
                 </div>
-            </T>
+            </div>
         )
     }
 
     // Main app — always shown (guests can browse; auth modal appears on demand)
     return (
-        <T>
-            <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
+        <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
                 {/* Auth modal */}
                 <AuthModal
                     open={authModal}
@@ -1204,8 +1201,7 @@ function AppContent() {
                         />
                     </aside>
                 </main>
-            </div>
-        </T>
+        </div>
     )
 }
 
@@ -1440,14 +1436,16 @@ function JoinWorkspaceCard({workspaceName, userName, onJoin}) {
                         <UserPlus size={13}/>
                         Not a member yet
                     </div>
-                    <T context="Sports prediction pool app">
-
-                        <h3 className="text-lg font-black">Join {workspaceName} to submit picks</h3>
-                        <p className="mt-1 text-sm text-base-content/55">
-                            Signed in as {userName || 'a user'}. You can keep browsing, or join this pool when you are
-                            ready.
-                        </p>
-                    </T>
+                    <h3 className="text-lg font-black">
+                        <T context="Sports prediction pool app">
+                            Join <Var>{workspaceName}</Var> to submit picks
+                        </T>
+                    </h3>
+                    <p className="mt-1 text-sm text-base-content/55">
+                        <T context="Sports prediction pool app">
+                            Signed in as <Var>{userName || 'a user'}</Var>. You can keep browsing, or join this pool when you are ready.
+                        </T>
+                    </p>
                 </div>
                 <button type="button" className="btn btn-primary rounded-xl font-black" onClick={onJoin}>
                     Join pool
@@ -1697,9 +1695,8 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                                 className="flex w-full cursor-pointer items-center gap-2 px-1 py-1"
                             >
                                 <div className="h-px flex-1 bg-base-300"/>
-                                <div
-                                    className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
-                                    <T context="Sports matches grouping">{group.label} · {group.matches.length} match{group.matches.length === 1 ? '' : 'es'}</T>
+                                <div className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
+                                    {group.label} · {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
                                 </div>
                                 <ChevronDown
                                     size={14}

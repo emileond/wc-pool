@@ -21,22 +21,22 @@ function PoolCountdown({ countdown }) {
   }
 
   const units = [
-    ['days', countdown.days],
-    ['hours', countdown.hours],
-    ['min', countdown.minutes],
-    ['sec', countdown.seconds],
+    { key: 'days', value: countdown.days, label: <T>days</T> },
+    { key: 'hours', value: countdown.hours, label: <T>hours</T> },
+    { key: 'min', value: countdown.minutes, label: <T>min</T> },
+    { key: 'sec', value: countdown.seconds, label: <T>sec</T> },
   ]
 
   return (
     <div className="mt-4 rounded-xl border border-base-300 bg-base-200/50 p-4">
       <p className="mb-3 text-center text-xs font-bold uppercase tracking-wide text-base-content/40"><T context="Sports prediction pool app">Starts in</T></p>
       <div className="grid grid-cols-4 gap-2 text-center">
-        {units.map(([label, value]) => (
-          <div key={label} className="flex min-w-0 flex-col items-center">
+        {units.map(({ key, value, label }) => (
+          <div key={key} className="flex min-w-0 flex-col items-center">
             <span className="countdown font-mono text-2xl font-black text-base-content sm:text-3xl">
               <span style={{ '--value': value }} aria-live="polite" aria-label={String(value)}>{value}</span>
             </span>
-            <span className="mt-1 text-[10px] font-bold uppercase tracking-wide text-base-content/45"><T>{label}</T></span>
+            <span className="mt-1 text-[10px] font-bold uppercase tracking-wide text-base-content/45">{label}</span>
           </div>
         ))}
       </div>
@@ -55,13 +55,13 @@ export default function PoolStatusCard({ playersCount, matchesCount, completedMa
       </div>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Matches', value: matchesCount },
-          { label: 'Ended', value: completedMatches },
-          { label: 'Total Picks', value: totalPredictions },
-        ].map(({ label, value }) => (
-          <div key={label} className="rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">
+          { key: 'matches', value: matchesCount, label: <T>Matches</T> },
+          { key: 'ended', value: completedMatches, label: <T>Ended</T> },
+          { key: 'total-picks', value: totalPredictions, label: <T>Total Picks</T> },
+        ].map(({ key, label, value }) => (
+          <div key={key} className="rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">
             <div className="text-xl font-black">{value}</div>
-            <div className="mt-0.5 font-semibold uppercase stat-desc"><T>{label}</T></div>
+            <div className="mt-0.5 font-semibold uppercase stat-desc">{label}</div>
           </div>
         ))}
       </div>

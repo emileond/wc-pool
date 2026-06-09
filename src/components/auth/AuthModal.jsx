@@ -1,5 +1,5 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { T, useGT } from 'gt-react'
+import { T, Var, useGT } from 'gt-react'
 import { XCircle } from 'lucide-react'
 
 export default function AuthModal({
@@ -65,20 +65,24 @@ function AuthCard({
   onClose,
 }) {
   const [formParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
-  const gt = useGT();
+  const gt = useGT()
 
   return (
     <div className="w-full max-w-sm rounded-2xl border border-base-200 bg-base-100 p-6 shadow-2xl">
       <div className="mb-5 flex items-start justify-between">
         <div>
-          <T context="login/signup for a sports prediction pool app">
-            <h2 className="text-xl font-black">{view === 'login' ? 'Welcome back' : 'Join the pool'}</h2>
-            <p className="mt-0.5 text-xs text-base-content/50">
-              {view === 'login'
-                ? `Sign in to submit picks${workspaceName ? ` for ${workspaceName}` : ''}.`
-                : `Create an account${workspaceName ? ` for ${workspaceName}` : ''}.`}
-            </p>
-          </T>
+          <h2 className="text-xl font-black">
+            {view === 'login' ? <T>Welcome back</T> : <T>Join the pool</T>}
+          </h2>
+          <p className="mt-0.5 text-xs text-base-content/50">
+            {view === 'login'
+              ? workspaceName
+                ? <T>Sign in to submit picks for <Var>{workspaceName}</Var>.</T>
+                : <T>Sign in to submit picks.</T>
+              : workspaceName
+                ? <T>Create an account for <Var>{workspaceName}</Var>.</T>
+                : <T>Create an account.</T>}
+          </p>
         </div>
         <button
           type="button"
@@ -90,7 +94,7 @@ function AuthCard({
       </div>
 
       <div className="mb-5 flex rounded-xl border border-base-200 bg-base-200 p-1">
-        {[['login', 'Sign in'], ['signup', 'Create account']].map(([tabView, label]) => (
+        {[['login', 'Sign in'], ['signup', 'Create account']].map(([tabView]) => (
           <button
             key={tabView}
             type="button"
@@ -99,7 +103,7 @@ function AuthCard({
               view === tabView ? 'bg-base-100 text-base-content shadow-sm' : 'text-base-content/50 hover:text-base-content'
             }`}
           >
-            <T>{label}</T>
+            {tabView === 'login' ? <T>Sign in</T> : <T>Create account</T>}
           </button>
         ))}
       </div>
@@ -150,17 +154,14 @@ function AuthCard({
       </form>
 
       <p className="mt-4 text-center text-xs text-base-content/40">
-        <T>
-
-        {view === 'login' ? "Don't have an account? " : 'Already have an account? '}
+        {view === 'login' ? <T>Don&apos;t have an account? </T> : <T>Already have an account? </T>}
         <button
           type="button"
           className="font-bold text-primary hover:underline"
           onClick={() => onViewChange(view === 'login' ? 'signup' : 'login')}
         >
-          {view === 'login' ? 'Create one' : 'Sign in'}
+          {view === 'login' ? <T>Create one</T> : <T>Sign in</T>}
         </button>
-        </T>
       </p>
     </div>
   )

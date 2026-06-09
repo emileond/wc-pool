@@ -134,14 +134,14 @@ export default function LeaderboardPage({ leaderboard, matches, predictions, onO
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Activity, label: 'Predictions', value: predictions.length },
-          { icon: Trophy, label: 'Matches scored', value: scored },
-          { icon: Lock, label: 'Locked', value: matches.filter(isLocked).length },
-        ].map(({ icon: Icon, label, value }) => (
-          <Panel key={label}>
+          { icon: Activity, key: 'predictions', value: predictions.length, label: <T>Predictions</T> },
+          { icon: Trophy, key: 'matches-scored', value: scored, label: <T>Matches scored</T> },
+          { icon: Lock, key: 'locked', value: matches.filter(isLocked).length, label: <T>Locked</T> },
+        ].map(({ icon: Icon, key, label, value }) => (
+          <Panel key={key}>
             <div className="mb-1 flex items-center gap-1.5 text-primary">
               <Icon size={15} />
-              <span className="text-xs font-bold uppercase tracking-wide text-base-content/50"><T>{label}</T></span>
+              <span className="text-xs font-bold uppercase tracking-wide text-base-content/50">{label}</span>
             </div>
             <div className="text-2xl font-black">{value}</div>
           </Panel>

@@ -1,5 +1,5 @@
 import {CalendarClock, CheckCircle2, Trophy, XCircle} from 'lucide-react'
-import {T} from 'gt-react'
+import {T, Var} from 'gt-react'
 import Panel from '../shared/Panel'
 import PlayerAvatar from '../shared/PlayerAvatar'
 
@@ -13,7 +13,7 @@ function StatTile({icon: Icon, label, value, tone}) {
 
     return (
         <div className="rounded-xl border border-base-300 bg-base-100 p-3">
-            <span className="text-xs font-bold uppercase tracking-wide stat-title"><T>{label}</T></span>
+            <span className="text-xs font-bold uppercase tracking-wide stat-title">{label}</span>
             <div className={`flex items-center gap-1 ${accentClass[tone]}`}>
                 <Icon size={20}/>
                 <div className="text-2xl font-black text-neutral">{value}</div>
@@ -38,15 +38,12 @@ export default function UserStatsCard({player, authUser, stats, workspaceName, o
                 </div>
                 <div className="rounded-xl border border-dashed border-base-300 bg-base-200/50 p-4 text-center">
                     <Trophy className="mx-auto mb-2 text-primary/45" size={28}/>
-                    <T context="Sports prediction pool app">
-                        <h3 className="font-black">No stats yet</h3>
-                        <p className="mt-1 text-sm text-base-content/55">
-
-                            {workspaceName
-                                ? `Join ${workspaceName} to submit picks and start tracking your score.`
-                                : 'Join a workspace to submit picks and start tracking your score.'}
-                        </p>
-                    </T>
+                    <h3 className="font-black"><T>No stats yet</T></h3>
+                    <p className="mt-1 text-sm text-base-content/55">
+                        {workspaceName
+                            ? <T>Join <Var>{workspaceName}</Var> to submit picks and start tracking your score.</T>
+                            : <T>Join a workspace to submit picks and start tracking your score.</T>}
+                    </p>
                     {onJoin && (
                         <button type="button" className="btn btn-primary btn-sm mt-4 rounded-xl font-black"
                                 onClick={onJoin}>
@@ -71,10 +68,10 @@ export default function UserStatsCard({player, authUser, stats, workspaceName, o
                 </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-                <StatTile icon={CheckCircle2} label="Correct" value={stats.correct} tone="success"/>
-                <StatTile icon={XCircle} label="Wrong" value={stats.wrong} tone="error"/>
-                <StatTile icon={CalendarClock} label="Pending" value={stats.pending} tone="warning"/>
-                <StatTile icon={Trophy} label="Score" value={stats.score} tone="primary"/>
+                <StatTile icon={CheckCircle2} label={<T>Correct</T>} value={stats.correct} tone="success"/>
+                <StatTile icon={XCircle} label={<T>Wrong</T>} value={stats.wrong} tone="error"/>
+                <StatTile icon={CalendarClock} label={<T>Pending</T>} value={stats.pending} tone="warning"/>
+                <StatTile icon={Trophy} label={<T>Score</T>} value={stats.score} tone="primary"/>
             </div>
         </Panel>
     )
