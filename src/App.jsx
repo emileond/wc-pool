@@ -26,6 +26,7 @@ import {
 import {toast} from 'sonner'
 import {useLocation, useNavigate} from 'react-router-dom'
 import {pb} from './lib/pocketbase';
+import useWorkspaceData from './hooks/react-query/useWorkspaceData'
 import Panel from './components/shared/Panel'
 import PlayerAvatar from './components/shared/PlayerAvatar'
 import UserStatsCard from './components/sidebar/UserStatsCard'
@@ -497,24 +498,28 @@ async function loadWorkspaceByName(name) {
     }
 }
 
-async function loadPocketBaseData(workspaceId) {
+async function loadWorkspacePlayers(workspaceId) {
     const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
-    const [memberships, matches, predictions, leaderboard] = await Promise.all([
-        loadPocketBaseCollection('memberships', {
-            filter: workspaceFilter,
-            sort: 'created',
-            expand: 'user'
-        }, normalizeMembership),
-        loadPocketBaseCollection('matches', {sort: 'kickoff'}, normalizeMatch),
-        loadPocketBaseCollection('predictions', {filter: workspaceFilter, sort: 'created'}, normalizePrediction),
-        loadPocketBaseCollection('leaderboard', {filter: workspaceFilter, sort: 'rank'}, normalizeLeaderboard),
-    ])
-    const players = memberships.map((membership) => membership.player)
-    return {players, matches, predictions, leaderboard}
+    const memberships = await loadPocketBaseCollection('memberships', {
+        filter: workspaceFilter,
+        sort: 'created',
+        expand: 'user',
+    }, normalizeMembership)
+    return memberships.map((membership) => membership.player)
 }
 
-async function loadPocketBaseGuestData(workspaceId) {
-    return loadPocketBaseData(workspaceId)
+async function loadWorkspaceMatches() {
+    return loadPocketBaseCollection('matches', {sort: 'kickoff'}, normalizeMatch)
+}
+
+async function loadWorkspacePredictions(workspaceId) {
+    const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
+    return loadPocketBaseCollection('predictions', {filter: workspaceFilter, sort: 'created'}, normalizePrediction)
+}
+
+async function loadWorkspaceLeaderboard(workspaceId) {
+    const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
+    return loadPocketBaseCollection('leaderboard', {filter: workspaceFilter, sort: 'rank'}, normalizeLeaderboard)
 }
 
 // The authenticated user is a pool player only after joining the active workspace.
@@ -634,18 +639,57 @@ function AppContent() {
     // Demo mode name (used when PocketBase is unreachable)
     const [demoName, setDemoName] = useState('')
 
-    const matches = useMemo(() => sortMatches(data.matches), [data.matches])
+    const workspaceId = activeWorkspace?.id
+    const {
+        effectiveData,
+        pocketbaseQueryLoading,
+        pocketbaseQueryError,
+        refreshWorkspaceData,
+        savePrediction: savePredictionRequest,
+        createMatch: createMatchRequest,
+        updateMatch: updateMatchRequest,
+        deleteMatch: deleteMatchRequest,
+    } = useWorkspaceData({
+        backend,
+        workspaceId,
+        fallbackData: data,
+        loadWorkspacePlayers,
+        loadWorkspaceMatches,
+        loadWorkspacePredictions,
+        loadWorkspaceLeaderboard,
+        savePredictionRequest: async ({workspaceId: targetWorkspaceId, playerId, matchId, pick}) => {
+            const ep = escapePbFilterValue(playerId)
+            const em = escapePbFilterValue(matchId)
+            const ew = escapePbFilterValue(targetWorkspaceId)
+            const existing = await pb.collection('predictions')
+                .getFirstListItem(`workspace="${ew}" && user="${ep}" && match="${em}"`).catch(() => null)
+            if (existing) return pb.collection('predictions').update(existing.id, {pick})
+            return pb.collection('predictions').create({
+                workspace: targetWorkspaceId,
+                user: playerId,
+                match: matchId,
+                pick,
+            })
+        },
+        createMatchRequest: (match) => pb.collection('matches').create(match),
+        updateMatchRequest: ({matchId, patch}) => pb.collection('matches').update(matchId, patch),
+        deleteMatchRequest: (matchId) => pb.collection('matches').delete(matchId),
+    })
+    const matches = useMemo(() => sortMatches(effectiveData.matches), [effectiveData.matches])
     const leaderboard = useMemo(() => {
-        if (backend === 'pocketbase') return data.leaderboard
-        return calculateLeaderboard(data.players, matches, data.predictions)
-    }, [backend, data.leaderboard, data.players, data.predictions, matches])
-    const playerStats = useMemo(() => calculatePlayerStats(player, matches, data.predictions), [data.predictions, matches, player])
+        if (backend === 'pocketbase') return effectiveData.leaderboard
+        return calculateLeaderboard(effectiveData.players, matches, effectiveData.predictions)
+    }, [backend, effectiveData.leaderboard, effectiveData.players, effectiveData.predictions, matches])
+    const playerStats = useMemo(
+        () => calculatePlayerStats(player, matches, effectiveData.predictions),
+        [effectiveData.predictions, matches, player],
+    )
     const playerPredictions = useMemo(() => {
         if (!player) return new Map()
         return new Map(
-            data.predictions.filter((p) => p.player === player.id).map((p) => [p.match, p]),
+            effectiveData.predictions.filter((p) => p.player === player.id).map((p) => [p.match, p]),
         )
-    }, [data.predictions, player])
+    }, [effectiveData.predictions, player])
     const completedMatches = matches.filter((m) => m.result).length
     const poolStartTime = matches.length ? new Date(matches[0].kickoff).getTime() : null
     const poolCountdown = poolStartTime ? calculateCountdown(poolStartTime, now) : null
@@ -701,7 +745,6 @@ function AppContent() {
                         const resolvedPlayer = await resolvePlayerForAuth(workspace.id)
                         if (!active) return
                         setPlayer(resolvedPlayer)
-                        setData(await loadPocketBaseData(workspace.id))
                         setBackend('pocketbase')
                         return
                     } catch {
@@ -712,7 +755,6 @@ function AppContent() {
                 }
 
                 if (!active) return
-                setData(await loadPocketBaseGuestData(workspace.id))
                 setBackend('pocketbase')
             } catch (err) {
                 if (pb.authStore.isValid) {
@@ -763,7 +805,7 @@ function AppContent() {
             const resolvedPlayer = await resolvePlayerForAuth(activeWorkspace.id)
             setAuthUser(resolvedAuthUser)
             setPlayer(resolvedPlayer)
-            setData(await loadPocketBaseData(activeWorkspace.id))
+            await refreshWorkspaceData(activeWorkspace.id)
             setBackend('pocketbase')
             setAuthModal(false)
         } catch (err) {
@@ -793,7 +835,7 @@ function AppContent() {
             const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
             setAuthUser(resolvedAuthUser)
             setPlayer(resolvedPlayer)
-            setData(await loadPocketBaseData(activeWorkspace.id))
+            await refreshWorkspaceData(activeWorkspace.id)
             setBackend('pocketbase')
             setAuthModal(false)
             toast.success(`Welcome, ${authName}!`)
@@ -818,9 +860,7 @@ function AppContent() {
         navigate(workspacePath(workspaceName, 'predictions'))
         setAdminUnlocked(false)
         if (backend === 'pocketbase') {
-            loadPocketBaseGuestData(activeWorkspace?.id)
-                .then(setData)
-                .catch(() => setData(emptyData))
+            refreshWorkspaceData(activeWorkspace?.id).catch(() => setData(emptyData))
         } else {
             setData(readStoredData())
         }
@@ -833,7 +873,7 @@ function AppContent() {
         try {
             const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
             setPlayer(resolvedPlayer)
-            setData(await loadPocketBaseData(activeWorkspace.id))
+            await refreshWorkspaceData(activeWorkspace.id)
             setJoinModal(false)
             toast.success(`Joined ${activeWorkspace.name}.`)
         } catch (err) {
@@ -888,22 +928,12 @@ function AppContent() {
 
         try {
             if (backend === 'pocketbase') {
-                const ep = escapePbFilterValue(player.id)
-                const em = escapePbFilterValue(match.id)
-                const ew = escapePbFilterValue(activeWorkspace.id)
-                const existing = await pb.collection('predictions')
-                    .getFirstListItem(`workspace="${ew}" && user="${ep}" && match="${em}"`).catch(() => null)
-                if (existing) {
-                    await pb.collection('predictions').update(existing.id, {pick})
-                } else {
-                    await pb.collection('predictions').create({
-                        workspace: activeWorkspace.id,
-                        user: player.id,
-                        match: match.id,
-                        pick
-                    })
-                }
-                setData(await loadPocketBaseData(activeWorkspace.id))
+                await savePredictionRequest({
+                    workspaceId: activeWorkspace.id,
+                    playerId: player.id,
+                    matchId: match.id,
+                    pick,
+                })
                 toast.success(`Saved: ${pickLabel(match, pick)} — ${match.home} vs ${match.away}`)
                 return
             }
@@ -928,8 +958,7 @@ function AppContent() {
         const match = {...newMatch, kickoff: new Date(newMatch.kickoff).toISOString(), status: 'scheduled', result: ''}
         try {
             if (backend === 'pocketbase') {
-                await pb.collection('matches').create(match)
-                setData(await loadPocketBaseData(activeWorkspace?.id))
+                await createMatchRequest(match)
             } else {
                 syncLocal((c) => ({...c, matches: [...c.matches, {...match, id: createId('match')}]}))
             }
@@ -943,8 +972,7 @@ function AppContent() {
     async function updateMatch(match, patch) {
         try {
             if (backend === 'pocketbase') {
-                await pb.collection('matches').update(match.id, patch)
-                setData(await loadPocketBaseData(activeWorkspace?.id))
+                await updateMatchRequest({matchId: match.id, patch})
             } else {
                 syncLocal((c) => ({...c, matches: c.matches.map((m) => m.id === match.id ? {...m, ...patch} : m)}))
             }
@@ -957,8 +985,7 @@ function AppContent() {
     async function deleteMatch(match) {
         try {
             if (backend === 'pocketbase') {
-                await pb.collection('matches').delete(match.id)
-                setData(await loadPocketBaseData(activeWorkspace?.id))
+                await deleteMatchRequest(match.id)
             } else {
                 syncLocal((c) => ({
                     ...c,
@@ -1087,6 +1114,20 @@ function AppContent() {
 
                 <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-3 lg:px-8">
                     <section ref={pageParent} className="min-w-0 lg:col-span-2">
+                        {backend === 'pocketbase' && activeWorkspace && pocketbaseQueryError && (
+                            <Panel className="mb-5 border border-error/30">
+                                <p className="text-sm font-semibold text-error">
+                                    {friendlyAuthError(pocketbaseQueryError)}
+                                </p>
+                            </Panel>
+                        )}
+
+                        {backend === 'pocketbase' && activeWorkspace && pocketbaseQueryLoading && !pocketbaseQueryError && (
+                            <Panel className="mb-5">
+                                <p className="text-sm font-semibold text-base-content/55"><T>Refreshing pool data…</T></p>
+                            </Panel>
+                        )}
+
                         {/* Demo mode: show name registration if no player yet */}
                         {backend === 'demo' && !player && (
                             <DemoRegistrationCard name={demoName} setName={setDemoName} onSubmit={registerDemo}/>
@@ -1108,6 +1149,7 @@ function AppContent() {
                             <PredictionsPage
                                 matches={matches}
                                 playerPredictions={playerPredictions}
+                                nowTime={now}
                                 savingPick={savingPick} onPick={savePrediction}
                                 onShowAuth={backend === 'pocketbase' && !authUser ? () => openAuth('signup') : null}
                                 onShowJoin={canJoinWorkspace ? openJoinModal : null}
@@ -1119,14 +1161,14 @@ function AppContent() {
                                     playerId={profilePlayerId}
                                     leaderboard={leaderboard}
                                     matches={matches}
-                                    predictions={data.predictions}
+                                    predictions={effectiveData.predictions}
                                     onBack={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
                                 />
                             ) : (
                                 <LeaderboardPage
                                     leaderboard={leaderboard}
                                     matches={matches}
-                                    predictions={data.predictions}
+                                    predictions={effectiveData.predictions}
                                     onOpenProfile={(selectedPlayerId) => {
                                         navigate(leaderboardProfilePath(workspaceName, selectedPlayerId))
                                     }}
@@ -1154,10 +1196,10 @@ function AppContent() {
                         />
 
                         <PoolStatusCard
-                            playersCount={data.players.length}
+                            playersCount={effectiveData.players.length}
                             matchesCount={matches.length}
                             completedMatches={completedMatches}
-                            totalPredictions={data.predictions.length}
+                            totalPredictions={effectiveData.predictions.length}
                             countdown={poolCountdown}
                         />
                     </aside>
@@ -1436,7 +1478,7 @@ function MissingWorkspaceCard({workspaceName}) {
 // ===========================================================================
 // Predictions page
 // ===========================================================================
-function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShowAuth, onShowJoin}) {
+function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPick, onShowAuth, onShowJoin}) {
     const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
     const [showPastMatches, setShowPastMatches] = useState(false)
     const [showPredictedMatches, setShowPredictedMatches] = useState(true)
@@ -1448,9 +1490,13 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
     const filtersRef = useRef(null)
     const [matchesParent] = useAutoAnimate({duration: 220, easing: 'ease-out'})
     const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
+    const collapseScope = useMemo(
+        () => `${activeStage}:${groupMode}:${showPastMatches ? 1 : 0}:${showPredictedMatches ? 1 : 0}`,
+        [activeStage, groupMode, showPastMatches, showPredictedMatches],
+    )
     const stageMatches = matches.filter((m) => m.stage === activeStageInfo.stage)
     const visibleMatches = stageMatches.filter((match) => {
-        const isPastMatch = new Date(match.kickoff).getTime() <= Date.now()
+        const isPastMatch = new Date(match.kickoff).getTime() <= nowTime
         const alreadyPicked = playerPredictions.has(match.id)
         if (!showPastMatches && isPastMatch) return false
         if (!showPredictedMatches && alreadyPicked) return false
@@ -1493,10 +1539,6 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
     }, [groupMode, inferredRounds, visibleMatches])
 
     useEffect(() => {
-        setCollapsedGroups({})
-    }, [activeStage, groupMode, showPastMatches, showPredictedMatches])
-
-    useEffect(() => {
         if (!scoringOpen && !filtersOpen) return undefined
 
         function closeOnOutsidePointer(event) {
@@ -1526,7 +1568,12 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
     }, [filtersOpen, scoringOpen])
 
     function toggleGroup(groupKey) {
-        setCollapsedGroups((current) => ({...current, [groupKey]: !(current[groupKey] ?? false)}))
+        const scopedKey = `${collapseScope}:${groupKey}`
+        setCollapsedGroups((current) => ({...current, [scopedKey]: !(current[scopedKey] ?? false)}))
+    }
+
+    function isGroupCollapsed(groupKey) {
+        return collapsedGroups[`${collapseScope}:${groupKey}`] ?? false
     }
 
     return (
@@ -1646,7 +1693,7 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
                             <button
                                 type="button"
                                 onClick={() => toggleGroup(group.key)}
-                                aria-expanded={!(collapsedGroups[group.key] ?? false)}
+                                aria-expanded={!isGroupCollapsed(group.key)}
                                 className="flex w-full cursor-pointer items-center gap-2 px-1 py-1"
                             >
                                 <div className="h-px flex-1 bg-base-300"/>
@@ -1657,14 +1704,14 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
                                 <ChevronDown
                                     size={14}
                                     className={`shrink-0 text-base-content/35 transition-transform duration-200 ${
-                                        collapsedGroups[group.key] ? '-rotate-90' : 'rotate-0'
+                                        isGroupCollapsed(group.key) ? '-rotate-90' : 'rotate-0'
                                     }`}
                                 />
                                 <div className="h-px flex-1 bg-base-300"/>
                             </button>
                             <div
                                 className={`grid transition-[grid-template-rows,opacity] duration-250 ease-out ${
-                                    collapsedGroups[group.key] ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
+                                    isGroupCollapsed(group.key) ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
                                 }`}
                             >
                                 <div className="overflow-hidden">
