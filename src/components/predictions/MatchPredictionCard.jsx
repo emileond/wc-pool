@@ -47,8 +47,83 @@ function TeamCrest({name, src}) {
     )
 }
 
+function translateStageLabel(stage, gt) {
+    const labels = {
+        'Group Stage': gt('Group Stage'),
+        'Round of 32': gt('Round of 32'),
+        'Round of 16': gt('Round of 16'),
+        'Quarterfinal': gt('Quarterfinal'),
+        'Semifinal': gt('Semifinal'),
+        'Third Place': gt('Third Place'),
+        'Final': gt('Final'),
+    }
+    return labels[stage] || stage
+}
+
+function translateTeamName(name, gt) {
+    const labels = {
+        Argentina: gt('Argentina'),
+        Algeria: gt('Algeria'),
+        Australia: gt('Australia'),
+        Austria: gt('Austria'),
+        Belgium: gt('Belgium'),
+        'Bosnia and Herzegovina': gt('Bosnia and Herzegovina'),
+        Brazil: gt('Brazil'),
+        'Cabo Verde': gt('Cabo Verde'),
+        Canada: gt('Canada'),
+        Croatia: gt('Croatia'),
+        Curacao: gt('Curacao'),
+        Czechia: gt('Czechia'),
+        'Congo DR': gt('Congo DR'),
+        Colombia: gt('Colombia'),
+        Ecuador: gt('Ecuador'),
+        Egypt: gt('Egypt'),
+        England: gt('England'),
+        France: gt('France'),
+        Germany: gt('Germany'),
+        Ghana: gt('Ghana'),
+        Haiti: gt('Haiti'),
+        Iraq: gt('Iraq'),
+        'IR Iran': gt('IR Iran'),
+        Japan: gt('Japan'),
+        Jordan: gt('Jordan'),
+        'Korea Republic': gt('Korea Republic'),
+        Mexico: gt('Mexico'),
+        Morocco: gt('Morocco'),
+        Netherlands: gt('Netherlands'),
+        'New Zealand': gt('New Zealand'),
+        Norway: gt('Norway'),
+        Panama: gt('Panama'),
+        Paraguay: gt('Paraguay'),
+        Portugal: gt('Portugal'),
+        Qatar: gt('Qatar'),
+        'Saudi Arabia': gt('Saudi Arabia'),
+        Scotland: gt('Scotland'),
+        Senegal: gt('Senegal'),
+        Spain: gt('Spain'),
+        'South Africa': gt('South Africa'),
+        Sweden: gt('Sweden'),
+        Switzerland: gt('Switzerland'),
+        Tunisia: gt('Tunisia'),
+        Turkiye: gt('Turkiye'),
+        Uruguay: gt('Uruguay'),
+        USA: gt('USA'),
+        Uzbekistan: gt('Uzbekistan'),
+        'United States': gt('United States'),
+        'Cote d\'Ivoire': gt('Cote d\'Ivoire'),
+        "Côte d'Ivoire": gt("Côte d'Ivoire"),
+        TBD: gt('TBD'),
+        Qualifier: gt('Qualifier'),
+        'Winner A': gt('Winner A'),
+        'Runner-up B': gt('Runner-up B'),
+        'Group Opponent': gt('Group Opponent'),
+        'Opening Rival': gt('Opening Rival'),
+    }
+    return labels[name] || name
+}
+
 function StatusPill({match}) {
-    const gt = useGT();
+    const gt = useGT()
 
     if (match.status === 'live') {
         return (
@@ -66,7 +141,7 @@ function StatusPill({match}) {
                 className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
                 <CheckCircle2 size={11}/>
                 {teamName ? (
-                    <T><span><Var>{teamName}</Var> won</span></T>
+                    <T><span><Var>{translateTeamName(teamName, gt)}</Var> won</span></T>
                 ) : (
                     <T>Draw</T>
                 )}
@@ -99,20 +174,22 @@ export default function MatchPredictionCard({
     const showScore = hasMatchScore(match)
     const pickIsCorrect = isFinal && prediction?.pick === match.result
 
-    // FIX 1: Wrap static code terms in the gt() hook so they translate inside arrays
     const pickOptions = [
-        {pick: 'home', label: gt('Home'), name: match.home},
+        {pick: 'home', label: gt('Home'), name: translateTeamName(match.home, gt)},
         {pick: 'draw', label: gt('Draw'), name: '—'},
-        {pick: 'away', label: gt('Away'), name: match.away},
+        {pick: 'away', label: gt('Away'), name: translateTeamName(match.away, gt)},
     ]
+
+    const selectedPickName = prediction?.pick === 'draw'
+        ? gt('Draw')
+        : translateTeamName(getPickTeamName(match, prediction?.pick), gt)
 
     return (
         <article
             className={`overflow-hidden border border-base-300 bg-base-100 ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
             <div
                 className={`flex items-center gap-2 border-b border-base-300 bg-base-200/50 text-xs ${compact ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
-                {/* FIX 2: Dynamic database strings like stage names are cleanly handled via gt() */}
-                <span className="font-semibold text-base-content/50">{gt(match.stage)}</span>
+                <span className="font-semibold text-base-content/50">{translateStageLabel(match.stage, gt)}</span>
                 <div className="ml-auto"><StatusPill match={match}/></div>
             </div>
 
@@ -121,7 +198,7 @@ export default function MatchPredictionCard({
                     <div className="flex flex-col items-end gap-1.5">
                         <TeamCrest name={match.home} src={match.homeCrest}/>
                         <div className={`text-right font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
-                            {gt(match.home)}
+                            {translateTeamName(match.home, gt)}
                         </div>
                     </div>
                     <div className="flex items-center justify-center">
@@ -140,7 +217,7 @@ export default function MatchPredictionCard({
                     <div className="flex flex-col items-start gap-1.5">
                         <TeamCrest name={match.away} src={match.awayCrest}/>
                         <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
-                            {gt(match.away)}
+                            {translateTeamName(match.away, gt)}
                         </div>
                     </div>
                 </div>
@@ -184,7 +261,7 @@ export default function MatchPredictionCard({
                                     {loading ? '…' : label}
                                 </div>
                                 <div className="truncate text-sm font-black">
-                                    {name === '—' ? name : gt(name)}
+                                    {name}
                                 </div>
                             </button>
                         )
@@ -198,22 +275,21 @@ export default function MatchPredictionCard({
                     }`}>
                         {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
 
-                        {/* FIX 3: Replaced the dynamic JavaScript string builder with structured JSX markup that the compiler can natively read */}
                         {!prediction ? (
                             readOnly ? <T>No pick</T> : onShowAuth ? <T>Sign in to pick</T> : onShowJoin ?
                                 <T>Join to pick</T> : <T>No pick yet</T>
                         ) : isFinal ? (
                             pickIsCorrect
                                 ?
-                                <T context="Status of pick"><span>Correct pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                <T context="Status of pick"><span>Correct pick: <Var>{selectedPickName}</Var></span></T>
                                 :
-                                <T context="Status of pick"><span>Missed pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                <T context="Status of pick"><span>Missed pick: <Var>{selectedPickName}</Var></span></T>
                         ) : (
                             readOnly
                                 ?
-                                <T context="Status of pick"><span>Pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                <T context="Status of pick"><span>Pick: <Var>{selectedPickName}</Var></span></T>
                                 :
-                                <T context="Status of pick"><span>Your pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                <T context="Status of pick"><span>Your pick: <Var>{selectedPickName}</Var></span></T>
                         )}
                     </span>
                     <span className="flex items-center gap-1">
