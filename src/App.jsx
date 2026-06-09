@@ -1403,7 +1403,9 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                                 <T>
                                     <div
                                         className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
-                                        {group.label} · {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
+                                        <Var>
+                                            {group.label} · {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
+                                        </Var>
                                     </div>
                                 </T>
                                 <ChevronDown

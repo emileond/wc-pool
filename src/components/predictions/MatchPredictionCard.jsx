@@ -1,5 +1,5 @@
 import {CalendarClock, CheckCircle2, Lock, XCircle} from 'lucide-react'
-import {T, useGT} from 'gt-react'
+import {T, useGT, Var} from 'gt-react'
 
 function formatKickoff(value) {
     return new Intl.DateTimeFormat(undefined, {
@@ -107,7 +107,7 @@ export default function MatchPredictionCard({
             <div
                 className={`flex items-center gap-2 border-b border-base-300 bg-base-200/50 text-xs ${compact ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
                 <T context="sports event stage"><span
-                    className="font-semibold text-base-content/50">{match.stage}</span></T>
+                    className="font-semibold text-base-content/50"><Var>{match.stage}</Var></span></T>
                 <div className="ml-auto"><StatusPill match={match}/></div>
             </div>
 
@@ -117,7 +117,9 @@ export default function MatchPredictionCard({
                         <TeamCrest name={match.home} src={match.homeCrest}/>
                         <div className={`text-right font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
                             <T context="Sports or country team">
-                                {match.home}
+                                <Var>
+                                    {match.home}
+                                </Var>
                             </T>
                         </div>
                     </div>
@@ -135,9 +137,8 @@ export default function MatchPredictionCard({
                     <div className="flex flex-col items-start gap-1.5">
                         <TeamCrest name={match.away} src={match.awayCrest}/>
 
-                        <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}><T
-                            context="Sports or country team">{match.away}</T></div>
-
+                        <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
+                            <T context="Sports or country team"><Var>{match.away}</Var></T></div>
                     </div>
                 </div>
 
@@ -176,11 +177,15 @@ export default function MatchPredictionCard({
                             >
                                 <T context="sports match">
                                     <div
-                                        className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">{loading ? '…' : label}</div>
+                                        className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">
+                                        <Var>
+                                            {loading ? '…' : label}
+                                        </Var>
+                                    </div>
                                 </T>
                                 <div className="truncate text-sm font-black">
                                     <T context="country or sports team">
-                                        {name}
+                                        <Var>{name}</Var>
                                     </T>
                                 </div>
                             </button>
@@ -195,7 +200,7 @@ export default function MatchPredictionCard({
           }`}>
             {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
               <T context="Status of pick in a sports prediction pool">
-              {pickStatus}
+              <Var>{pickStatus}</Var>
               </T>
           </span>
                     <span className="flex items-center gap-1">
