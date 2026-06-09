@@ -63,6 +63,7 @@ CREATE UNIQUE INDEX idx_memberships_workspace_user ON memberships (workspace, us
 - `external_id` text, required, unique
 - `stage` text
 - `group` text
+- `matchday` number (optional, group-stage round from football-data.org)
 - `home` text, required
 - `away` text, required
 - `home_crest` url
@@ -177,6 +178,8 @@ https://api.football-data.org/v4/competitions/WC/matches?season=2026
 It upserts PocketBase `matches` by `external_id`, which is the football-data.org match ID. Add `external_id` as a unique text field before running the task.
 
 The sync stores team crests from football-data.org `homeTeam.crest` and `awayTeam.crest` into `matches.home_crest` and `matches.away_crest`.
+
+The sync stores football-data.org `matchday` into `matches.matchday` (optional). This is used by the UI to group group-stage fixtures by 1st/2nd/3rd round.
 
 The sync stores the final score from football-data.org `score.fullTime.home` and `score.fullTime.away` into `matches.home_score` and `matches.away_score`. Keep both score fields optional because upcoming fixtures return `null` scores.
 

@@ -4,9 +4,11 @@ import { useAutoAnimate } from '@formkit/auto-animate/react'
 import {
   Activity,
   CalendarClock,
+  ChevronDown,
   CheckCircle2,
   CircleHelp,
   CircleDot,
+  Filter,
   Lock,
   LogOut,
   Medal,
@@ -46,6 +48,7 @@ pb.autoCancellation(false)
 //  matches
 //    - external_id (text, unique; football-data.org match id)
 //    - stage, group, home, away, venue, kickoff, status, result
+//    - matchday (number, optional; group-stage round from football-data.org)
 //    - home_crest, away_crest (url; synced from team crest)
 //    - home_score, away_score (number; synced from score.fullTime)
 //
@@ -161,6 +164,12 @@ function optionalScore(value) {
   return Number.isFinite(score) ? score : null
 }
 
+function optionalInteger(value) {
+  if (value === null || value === undefined || value === '') return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) ? parsed : null
+}
+
 function normalizeMatch(record) {
   return {
     id: record.id,
@@ -172,6 +181,7 @@ function normalizeMatch(record) {
     awayCrest: record.away_crest || '',
     venue:   record.venue  || '',
     kickoff: record.kickoff,
+    matchday: optionalInteger(record.matchday),
     status:  record.status || 'scheduled',
     result:  record.result || '',
     homeScore: optionalScore(record.home_score),
@@ -250,6 +260,55 @@ function formatKickoff(value) {
     weekday: 'short', month: 'short', day: 'numeric',
     hour: 'numeric', minute: '2-digit',
   }).format(new Date(value))
+}
+
+function kickoffDateKey(value) {
+  const date = new Date(value)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function kickoffDateLabel(value) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(value))
+}
+
+function ordinal(value) {
+  const mod10 = value % 10
+  const mod100 = value % 100
+  if (mod10 === 1 && mod100 !== 11) return `${value}st`
+  if (mod10 === 2 && mod100 !== 12) return `${value}nd`
+  if (mod10 === 3 && mod100 !== 13) return `${value}rd`
+  return `${value}th`
+}
+
+function inferGroupRounds(matches) {
+  const byGroup = new Map()
+  matches.forEach((match) => {
+    if (match.stage !== 'Group Stage') return
+    const groupKey = match.group || 'Ungrouped'
+    if (!byGroup.has(groupKey)) byGroup.set(groupKey, [])
+    byGroup.get(groupKey).push(match)
+  })
+
+  const rounds = new Map()
+  byGroup.forEach((groupMatches) => {
+    const ordered = [...groupMatches].sort((a, b) => {
+      const kickoffDiff = new Date(a.kickoff) - new Date(b.kickoff)
+      if (kickoffDiff !== 0) return kickoffDiff
+      return String(a.id).localeCompare(String(b.id))
+    })
+    ordered.forEach((match, index) => {
+      rounds.set(match.id, Math.floor(index / 2) + 1)
+    })
+  })
+
+  return rounds
 }
 
 function formatForInput(value) {
@@ -1143,8 +1202,20 @@ function HeaderUserMenu({ backend, player, workspace, themePreference, onThemeCh
       }
     }
 
-    document.addEventListener('pointerdown', closeOnOutsidePointer)
-    return () => document.removeEventListener('pointerdown', closeOnOutsidePointer)
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutsidePointer)
+    document.addEventListener('touchstart', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsidePointer)
+      document.removeEventListener('touchstart', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
   }, [menuOpen])
 
   return (
@@ -1423,9 +1494,96 @@ function MissingWorkspaceCard({ workspaceName }) {
 // ===========================================================================
 function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onShowAuth, onShowJoin }) {
   const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
+  const [showPastMatches, setShowPastMatches] = useState(false)
+  const [showPredictedMatches, setShowPredictedMatches] = useState(true)
+  const [groupMode, setGroupMode] = useState('round')
+  const [collapsedGroups, setCollapsedGroups] = useState({})
+  const [scoringOpen, setScoringOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const scoringRef = useRef(null)
+  const filtersRef = useRef(null)
   const [matchesParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
   const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
-  const visibleMatches  = matches.filter((m) => m.stage === activeStageInfo.stage)
+  const stageMatches = matches.filter((m) => m.stage === activeStageInfo.stage)
+  const visibleMatches = stageMatches.filter((match) => {
+    const isPastMatch = new Date(match.kickoff).getTime() <= Date.now()
+    const alreadyPicked = playerPredictions.has(match.id)
+    if (!showPastMatches && isPastMatch) return false
+    if (!showPredictedMatches && alreadyPicked) return false
+    return true
+  })
+
+  const inferredRounds = useMemo(() => inferGroupRounds(stageMatches), [stageMatches])
+
+  const groupedMatches = useMemo(() => {
+    if (groupMode === 'none') return []
+    const groups = new Map()
+    visibleMatches.forEach((match) => {
+      let key = ''
+      let label = ''
+      if (groupMode === 'date') {
+        key = kickoffDateKey(match.kickoff)
+        label = kickoffDateLabel(match.kickoff)
+      } else if (groupMode === 'group') {
+        key = match.group || 'ungrouped'
+        label = match.group || 'Ungrouped'
+      } else if (groupMode === 'round') {
+        const roundNumber = match.matchday || inferredRounds.get(match.id)
+        if (roundNumber) {
+          key = `round-${roundNumber}`
+          label = `${ordinal(roundNumber)} round`
+        } else {
+          key = match.group || match.stage || 'ungrouped'
+          label = match.group || match.stage || 'Ungrouped'
+        }
+      }
+
+      const existing = groups.get(key)
+      if (existing) {
+        existing.matches.push(match)
+      } else {
+        groups.set(key, { key, label, matches: [match] })
+      }
+    })
+    return [...groups.values()]
+  }, [groupMode, inferredRounds, visibleMatches])
+
+  useEffect(() => {
+    setCollapsedGroups({})
+  }, [activeStage, groupMode, showPastMatches, showPredictedMatches])
+
+  useEffect(() => {
+    if (!scoringOpen && !filtersOpen) return undefined
+
+    function closeOnOutsidePointer(event) {
+      const target = event.target
+      if (scoringRef.current?.contains(target) || filtersRef.current?.contains(target)) {
+        return
+      }
+      setScoringOpen(false)
+      setFiltersOpen(false)
+    }
+
+    function closeOnEscape(event) {
+      if (event.key === 'Escape') {
+        setScoringOpen(false)
+        setFiltersOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', closeOnOutsidePointer)
+    document.addEventListener('touchstart', closeOnOutsidePointer)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('mousedown', closeOnOutsidePointer)
+      document.removeEventListener('touchstart', closeOnOutsidePointer)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [filtersOpen, scoringOpen])
+
+  function toggleGroup(groupKey) {
+    setCollapsedGroups((current) => ({ ...current, [groupKey]: !(current[groupKey] ?? false) }))
+  }
 
   return (
     <div className="space-y-4">
@@ -1434,25 +1592,90 @@ function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onSho
           <h2 className="text-2xl font-black sm:text-3xl">Predictions</h2>
           <p className="mt-0.5 text-sm text-base-content/60">Pick the result before kickoff to score points.</p>
         </div>
-        <details className="dropdown dropdown-end shrink-0">
-          <summary className="btn btn-soft btn-sm rounded-xl">
-            Scoring
-            <CircleHelp size={16} />
-          </summary>
-          <div className="dropdown-content z-20 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl">
-            <h3 className="font-black">Scoring system</h3>
-            <ul className="mt-3 space-y-2 text-sm text-base-content/70">
-              <li className="flex gap-2">
-                <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={16} />
-                <span>Correctly picking the match result earns 3 points.</span>
-              </li>
-              <li className="flex gap-2">
-                <Lock className="mt-0.5 shrink-0 text-warning" size={16} />
-                <span>Picks lock at kickoff and cannot be changed afterward.</span>
-              </li>
-            </ul>
+        <div className="flex items-center gap-2">
+          <div ref={scoringRef} className="dropdown dropdown-end shrink-0">
+            <button
+              type="button"
+              className="btn btn-soft btn-sm rounded-xl"
+              onClick={() => {
+                setScoringOpen((open) => !open)
+                setFiltersOpen(false)
+              }}
+              aria-expanded={scoringOpen}
+              aria-haspopup="menu"
+            >
+              Scoring
+              <CircleHelp size={16} />
+            </button>
+            {scoringOpen && (
+              <div className="dropdown-content z-20 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl">
+                <h3 className="font-black">Scoring system</h3>
+                <ul className="mt-3 space-y-2 text-sm text-base-content/70">
+                  <li className="flex gap-2">
+                    <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={16} />
+                    <span>Correctly picking the match result earns 3 points.</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <Lock className="mt-0.5 shrink-0 text-warning" size={16} />
+                    <span>Picks lock at kickoff and cannot be changed afterward.</span>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
-        </details>
+          <div ref={filtersRef} className="dropdown dropdown-end shrink-0">
+            <button
+              type="button"
+              className="btn btn-soft btn-sm rounded-xl"
+              onClick={() => {
+                setFiltersOpen((open) => !open)
+                setScoringOpen(false)
+              }}
+              aria-expanded={filtersOpen}
+              aria-haspopup="menu"
+            >
+              Filters
+              <Filter size={16} />
+            </button>
+            {filtersOpen && (
+              <div className="dropdown-content z-20 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl">
+                <div className="space-y-2">
+                  <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm"
+                      checked={showPastMatches}
+                      onChange={(event) => setShowPastMatches(event.target.checked)}
+                    />
+                    <span className="text-sm font-semibold">Show past matches</span>
+                  </label>
+                  <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm"
+                      checked={showPredictedMatches}
+                      onChange={(event) => setShowPredictedMatches(event.target.checked)}
+                    />
+                    <span className="text-sm font-semibold">Show predicted matches</span>
+                  </label>
+                  <div className="px-2 py-1.5">
+                    <div className="mb-1 text-xs font-bold uppercase tracking-wide text-base-content/45">Grouping</div>
+                    <select
+                      className="select select-bordered select-sm w-full text-sm font-semibold"
+                      value={groupMode}
+                      onChange={(event) => setGroupMode(event.target.value)}
+                    >
+                      <option value="date">By date</option>
+                      <option value="round">By round</option>
+                      <option value="group">By group</option>
+                      <option value="none">No grouping</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       <StageTabs activeStage={activeStage} matches={matches} onChange={setActiveStage} />
@@ -1467,17 +1690,61 @@ function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onSho
             </div>
           </Panel>
         )}
-        {visibleMatches.map((match) => (
-          <MatchPredictionCard
-            key={match.id}
-            match={match}
-            prediction={playerPredictions.get(match.id)}
-            savingPick={savingPick}
-            onPick={onPick}
-            onShowAuth={onShowAuth}
-            onShowJoin={onShowJoin}
-          />
-        ))}
+        {groupMode !== 'none'
+          ? groupedMatches.map((group) => (
+              <div key={group.key} className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.key)}
+                  aria-expanded={!(collapsedGroups[group.key] ?? false)}
+                  className="flex w-full cursor-pointer items-center gap-2 px-1 py-1"
+                >
+                  <div className="h-px flex-1 bg-base-300" />
+                  <div className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
+                    {group.label} · {group.matches.length} match{group.matches.length === 1 ? '' : 'es'}
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    className={`shrink-0 text-base-content/35 transition-transform duration-200 ${
+                      collapsedGroups[group.key] ? '-rotate-90' : 'rotate-0'
+                    }`}
+                  />
+                  <div className="h-px flex-1 bg-base-300" />
+                </button>
+                <div
+                  className={`grid transition-[grid-template-rows,opacity] duration-250 ease-out ${
+                    collapsedGroups[group.key] ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div className="grid gap-3 pt-2">
+                      {group.matches.map((match) => (
+                        <MatchPredictionCard
+                          key={match.id}
+                          match={match}
+                          prediction={playerPredictions.get(match.id)}
+                          savingPick={savingPick}
+                          onPick={onPick}
+                          onShowAuth={onShowAuth}
+                          onShowJoin={onShowJoin}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          : visibleMatches.map((match) => (
+              <MatchPredictionCard
+                key={match.id}
+                match={match}
+                prediction={playerPredictions.get(match.id)}
+                savingPick={savingPick}
+                onPick={onPick}
+                onShowAuth={onShowAuth}
+                onShowJoin={onShowJoin}
+              />
+            ))}
       </div>
     </div>
   )

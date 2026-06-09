@@ -37,6 +37,7 @@ type FootballDataMatch = {
     | "AWARDED";
   stage?: string | null;
   group?: string | null;
+  matchday?: number | null;
   venue?: string | null;
   homeTeam: FootballDataTeam;
   awayTeam: FootballDataTeam;
@@ -115,6 +116,7 @@ function matchPayload(match: FootballDataMatch) {
     external_id: String(match.id),
     stage: stageLabel(match.stage),
     group: groupLabel(match.group),
+    matchday: typeof match.matchday === "number" ? match.matchday : null,
     home: normalizeTeamName(match.homeTeam.name),
     away: normalizeTeamName(match.awayTeam.name),
     home_crest: match.homeTeam.crest || "",
