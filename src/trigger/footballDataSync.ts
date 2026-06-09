@@ -1,5 +1,7 @@
-import { logger, schedules } from "@trigger.dev/sdk/v3";
-import PocketBase from "pocketbase";
+import { logger, schedules, tasks } from "@trigger.dev/sdk/v3";
+import type PocketBase from "pocketbase";
+import type { syncLeaderboard } from "./leaderboardSync.ts";
+import { pocketBaseClient } from "./pocketbaseClient.ts";
 
 const FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4";
 const WORLD_CUP_COMPETITION_CODE = "WC";
@@ -9,10 +11,15 @@ const FOOTBALL_DATA_RETRIES = 1;
 
 type FootballDataTeam = {
   name?: string | null;
+  crest?: string | null;
 };
 
 type FootballDataScore = {
   winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
+  fullTime?: {
+    home?: number | null;
+    away?: number | null;
+  } | null;
 };
 
 type FootballDataMatch = {
@@ -45,6 +52,8 @@ type FootballDataJson = Record<string, unknown>;
 type MatchRecord = {
   id: string;
 };
+
+type UpsertResult = "created" | "updated";
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -91,6 +100,10 @@ function appResult(match: FootballDataMatch) {
   return "";
 }
 
+function scoreValue(value?: number | null) {
+  return typeof value === "number" ? value : null;
+}
+
 function normalizeTeamName(name?: string | null) {
   if (!name) return "TBD";
   if (name === "United States") return "USA";
@@ -104,10 +117,14 @@ function matchPayload(match: FootballDataMatch) {
     group: groupLabel(match.group),
     home: normalizeTeamName(match.homeTeam.name),
     away: normalizeTeamName(match.awayTeam.name),
+    home_crest: match.homeTeam.crest || "",
+    away_crest: match.awayTeam.crest || "",
     venue: match.venue || "",
     kickoff: match.utcDate,
     status: appStatus(match.status),
     result: appResult(match),
+    home_score: scoreValue(match.score?.fullTime?.home),
+    away_score: scoreValue(match.score?.fullTime?.away),
   };
 }
 
@@ -232,15 +249,7 @@ async function fetchWorldCupMatches() {
   return data.matches;
 }
 
-async function pocketBaseClient() {
-  const pb = new PocketBase(requiredEnv("POCKETBASE_URL"));
-  await pb
-    .collection("users")
-    .authWithPassword(requiredEnv("POCKETBASE_ADMIN_EMAIL"), requiredEnv("POCKETBASE_ADMIN_PASSWORD"));
-  return pb;
-}
-
-async function upsertMatch(pb: PocketBase, match: FootballDataMatch) {
+async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<UpsertResult> {
   const payload = matchPayload(match);
   const externalId = escapePbFilterValue(payload.external_id);
   let existing: MatchRecord | null = null;
@@ -305,8 +314,8 @@ export const syncWorldCupMatches = schedules.task({
   run: async () => {
     try {
       const matches = await fetchWorldCupMatches();
-      const pb = await pocketBaseClient();
-      const totals = { created: 0, updated: 0 };
+      const pb = await pocketBaseClient("matches-sync");
+      const totals: Record<UpsertResult, number> = { created: 0, updated: 0 };
 
       for (const match of matches) {
         const result = await upsertMatch(pb, match);
@@ -317,6 +326,14 @@ export const syncWorldCupMatches = schedules.task({
         fetched: matches.length,
         ...totals,
       });
+
+      try {
+        await tasks.trigger<typeof syncLeaderboard>("sync-leaderboard", { reason: "matches-sync" });
+      } catch (err) {
+        logger.error("Failed to trigger leaderboard sync after match sync", {
+          error: errorDetails(err),
+        });
+      }
 
       return {
         fetched: matches.length,

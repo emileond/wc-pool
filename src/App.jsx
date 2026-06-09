@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import Avatar from 'boring-avatars'
+import { useAutoAnimate } from '@formkit/auto-animate/react'
 import {
   Activity,
   CalendarClock,
   CheckCircle2,
+  CircleHelp,
   CircleDot,
   Lock,
   LogOut,
   Medal,
+  Menu,
   Plus,
-  Settings,
   Sparkles,
   Trash2,
   Trophy,
@@ -17,39 +19,9 @@ import {
   WifiOff,
   XCircle,
 } from 'lucide-react'
-import * as Flags from 'country-flag-icons/react/3x2'
 import { toast } from 'sonner'
 import { pb } from './lib/pocketbase';
 pb.autoCancellation(false)
-
-// ISO alpha-2 codes for World Cup nations
-const COUNTRY_CODES = {
-  'Afghanistan': 'AF', 'Albania': 'AL', 'Algeria': 'DZ', 'Argentina': 'AR',
-  'Armenia': 'AM', 'Australia': 'AU', 'Austria': 'AT', 'Azerbaijan': 'AZ',
-  'Bahrain': 'BH', 'Belarus': 'BY', 'Belgium': 'BE', 'Bolivia': 'BO',
-  'Bosnia': 'BA', 'Bosnia and Herzegovina': 'BA', 'Brazil': 'BR',
-  'Cameroon': 'CM', 'Canada': 'CA', 'Chile': 'CL', 'China': 'CN',
-  'Colombia': 'CO', 'Costa Rica': 'CR', 'Croatia': 'HR', 'Cuba': 'CU',
-  "Côte d'Ivoire": 'CI', 'Ivory Coast': 'CI', 'Czech Republic': 'CZ',
-  'Czechia': 'CZ', 'Denmark': 'DK', 'DR Congo': 'CD', 'Ecuador': 'EC',
-  'Curaçao': 'CW', 'Egypt': 'EG', 'England': 'GB', 'Estonia': 'EE', 'Finland': 'FI',
-  'France': 'FR', 'Georgia': 'GE', 'Germany': 'DE', 'Ghana': 'GH',
-  'Greece': 'GR', 'Honduras': 'HN', 'Hungary': 'HU', 'India': 'IN',
-  'Indonesia': 'ID', 'IR Iran': 'IR', 'Iran': 'IR', 'Iraq': 'IQ', 'Ireland': 'IE',
-  'Israel': 'IL', 'Italy': 'IT', 'Jamaica': 'JM', 'Japan': 'JP',
-  'Jordan': 'JO', 'Kenya': 'KE', 'Kuwait': 'KW', 'Latvia': 'LV',
-  'Lithuania': 'LT', 'Mali': 'ML', 'Mexico': 'MX', 'Moldova': 'MD',
-  'Montenegro': 'ME', 'Morocco': 'MA', 'Netherlands': 'NL',
-  'New Zealand': 'NZ', 'Nigeria': 'NG', 'North Macedonia': 'MK',
-  'Norway': 'NO', 'Oman': 'OM', 'Panama': 'PA', 'Paraguay': 'PY',
-  'Peru': 'PE', 'Poland': 'PL', 'Portugal': 'PT', 'Qatar': 'QA',
-  'Romania': 'RO', 'Russia': 'RU', 'Saudi Arabia': 'SA', 'Scotland': 'GB',
-  'Senegal': 'SN', 'Serbia': 'RS', 'Slovakia': 'SK', 'Slovenia': 'SI',
-  'South Africa': 'ZA', 'South Korea': 'KR', 'Spain': 'ES', 'Sweden': 'SE',
-  'Switzerland': 'CH', 'Thailand': 'TH', 'Tunisia': 'TN', 'Turkey': 'TR',
-  'Türkiye': 'TR', 'UAE': 'AE', 'Ukraine': 'UA', 'United States': 'US', 'USA': 'US',
-  'Uruguay': 'UY', 'Venezuela': 'VE', 'Vietnam': 'VN', 'Wales': 'GB',
-}
 
 // ---------------------------------------------------------------------------
 // Required PocketBase schema
@@ -63,11 +35,22 @@ const COUNTRY_CODES = {
 //  matches
 //    - external_id (text, unique; football-data.org match id)
 //    - stage, group, home, away, venue, kickoff, status, result
+//    - home_crest, away_crest (url; synced from team crest)
+//    - home_score, away_score (number; synced from score.fullTime)
 //
 //  predictions
 //    - user      (relation → users)
 //    - match     (relation → matches)
 //    - pick      (text: "home" | "draw" | "away")
+//
+//  leaderboard
+//    - user        (relation → users, unique)
+//    - name        (text)
+//    - points      (number)
+//    - correct     (number)
+//    - predictions (number)
+//    - accuracy    (number)
+//    - rank        (number)
 //
 // The UI still calls signed-in users "players" because that is the pool
 // language, but live PocketBase data now uses the built-in users collection
@@ -111,8 +94,19 @@ const demoMatches = [
   { id: 'match-6', stage: 'Round of 32', group: 'Knockout',      home: 'Winner A',      away: 'Runner-up B',    venue: 'Seattle Stadium',     kickoff: '2026-06-28T20:00:00.000Z', status: 'scheduled', result: '' },
 ]
 
-const emptyData = { players: [], matches: [], predictions: [] }
+const emptyData = { players: [], matches: [], predictions: [], leaderboard: [] }
 const demoData = { ...emptyData, matches: demoMatches }
+const HERO_SURFACE = 'relative overflow-hidden border-b border-base-300 bg-base-100 text-base-content'
+const HERO_STYLE = {
+  backgroundImage: [
+    'linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 24%, transparent), transparent 52%)',
+    'linear-gradient(225deg, color-mix(in oklch, var(--color-accent) 22%, transparent), transparent 46%)',
+    'linear-gradient(180deg, var(--color-base-100), color-mix(in oklch, var(--color-base-200) 74%, var(--color-base-100)))',
+  ].join(', '),
+}
+const HERO_PATTERN_STYLE = {
+  backgroundImage: 'repeating-linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 16%, transparent) 0 1px, transparent 1px 18px)',
+}
 
 // ---------------------------------------------------------------------------
 // Local storage helpers (demo mode only)
@@ -133,6 +127,13 @@ function writeStoredData(data) {
 function createId(prefix) { return `${prefix}-${crypto.randomUUID()}` }
 function cleanName(name)   { return name.trim().replace(/\s+/g, ' ') }
 
+function optionalScore(value) {
+  if (value === null || value === undefined || value === '') return null;
+
+  const score = Number(value)
+  return Number.isFinite(score) ? score : null
+}
+
 function normalizeMatch(record) {
   return {
     id: record.id,
@@ -140,11 +141,19 @@ function normalizeMatch(record) {
     group:   record.group  || '',
     home:    record.home   || '',
     away:    record.away   || '',
+    homeCrest: record.home_crest || '',
+    awayCrest: record.away_crest || '',
     venue:   record.venue  || '',
     kickoff: record.kickoff,
     status:  record.status || 'scheduled',
     result:  record.result || '',
+    homeScore: optionalScore(record.home_score),
+    awayScore: optionalScore(record.away_score),
   }
+}
+
+function hasMatchScore(match) {
+  return match.status !== 'scheduled' && Number.isFinite(match.homeScore) && Number.isFinite(match.awayScore)
 }
 
 function userDisplayName(record) {
@@ -166,6 +175,19 @@ function normalizePrediction(record) {
     player: typeof user === 'string' ? user : user?.id,
     match:  typeof record.match  === 'string' ? record.match  : record.match?.id,
     pick:   record.pick,
+  }
+}
+
+function normalizeLeaderboard(record) {
+  const user = record.user ?? record.player
+  return {
+    id:          typeof user === 'string' ? user : user?.id || record.id,
+    name:        record.name || userDisplayName(user),
+    points:      Number(record.points) || 0,
+    correct:     Number(record.correct) || 0,
+    predictions: Number(record.predictions) || 0,
+    accuracy:    Number(record.accuracy) || 0,
+    rank:        Number(record.rank) || 0,
   }
 }
 
@@ -238,12 +260,13 @@ async function loadPocketBaseCollection(collection, options, mapRecord) {
 }
 
 async function loadPocketBaseData() {
-  const [players, matches, predictions] = await Promise.all([
+  const [players, matches, predictions, leaderboard] = await Promise.all([
     loadPocketBaseCollection('users', { sort: 'created' }, normalizeUser),
     loadPocketBaseCollection('matches', { sort: 'kickoff' }, normalizeMatch),
     loadPocketBaseCollection('predictions', { sort: 'created' }, normalizePrediction),
+    loadPocketBaseCollection('leaderboard', { sort: 'rank' }, normalizeLeaderboard),
   ])
-  return { players, matches, predictions }
+  return { players, matches, predictions, leaderboard }
 }
 
 async function loadPocketBaseGuestData() {
@@ -310,7 +333,10 @@ function App() {
   const [demoName, setDemoName] = useState('')
 
   const matches      = useMemo(() => sortMatches(data.matches), [data.matches])
-  const leaderboard  = useMemo(() => calculateLeaderboard(data.players, matches, data.predictions), [data.players, matches, data.predictions])
+  const leaderboard  = useMemo(() => {
+    if (backend === 'pocketbase') return data.leaderboard
+    return calculateLeaderboard(data.players, matches, data.predictions)
+  }, [backend, data.leaderboard, data.players, data.predictions, matches])
   const playerStats  = useMemo(() => calculatePlayerStats(player, matches, data.predictions), [data.predictions, matches, player])
   const playerPredictions = useMemo(() => {
     if (!player) return new Map()
@@ -320,6 +346,7 @@ function App() {
   }, [data.predictions, player])
   const completedMatches = matches.filter((m) => m.result).length
   const adminAllowed = Boolean(player?.isAdmin || adminUnlocked)
+  const [pageParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
 
   // ---------------------------------------------------------------------------
   // Startup: restore session or detect backend
@@ -564,9 +591,12 @@ function App() {
   // Loading state — waiting to know if PocketBase is reachable
   if (backend === 'loading') {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-800 via-slate-700 to-emerald-800 text-white" data-theme="nord">
-        <Sparkles size={28} className="mb-4 opacity-60" />
-        <p className="text-sm font-semibold text-white/60">Connecting…</p>
+      <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`} style={HERO_STYLE} data-theme="nord">
+        <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE} />
+        <div className="relative flex flex-col items-center">
+          <Sparkles size={28} className="mb-4 opacity-70" />
+          <p className="text-sm font-semibold text-base-content/65">Connecting…</p>
+        </div>
       </div>
     )
   }
@@ -592,12 +622,12 @@ function App() {
         </div>
       )}
       {/* Header */}
-      <header className="bg-gradient-to-br from-slate-800 via-slate-700 to-emerald-800 text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+      <header className={HERO_SURFACE} style={HERO_STYLE}>
+        <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE} />
+        <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-white/50">
-                <Sparkles size={13} />
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-base-content/55">
                  #FUN-SPORTS · CT Prediction Pool
               </div>
               <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
@@ -620,14 +650,15 @@ function App() {
             <nav className="flex flex-wrap gap-1">
               <NavButton active={activePage === 'predictions'} onClick={() => setActivePage('predictions')} icon={CircleDot}>Predictions</NavButton>
               <NavButton active={activePage === 'leaderboard'} onClick={() => setActivePage('leaderboard')} icon={Trophy}>Leaderboard</NavButton>
-              <NavButton active={activePage === 'admin'}       onClick={() => setActivePage('admin')}       icon={Settings}>Admin</NavButton>
+              {/*<NavButton ctive={activePage === 'admin'}
+                  onClick={() => setActivePage('admin')} icon={Settings}>Admin</NavButton>*/}
             </nav>
           </div>
         </div>
       </header>
 
       <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-3 lg:px-8">
-        <section className="min-w-0 lg:col-span-2">
+        <section ref={pageParent} className="min-w-0 lg:col-span-2">
           {/* Demo mode: show name registration if no player yet */}
           {backend === 'demo' && !player && (
             <DemoRegistrationCard name={demoName} setName={setDemoName} onSubmit={registerDemo} />
@@ -668,12 +699,12 @@ function App() {
             <div className="grid grid-cols-3 gap-2">
               {[
                 { label: 'Matches', value: matches.length },
-                { label: 'Finals',  value: completedMatches },
-                { label: 'Picks',   value: data.predictions.length },
+                { label: 'Ended',  value: completedMatches },
+                { label: 'Total Picks',   value: data.predictions.length },
               ].map(({ label, value }) => (
                 <div key={label} className="rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">
                   <div className="text-xl font-black">{value}</div>
-                  <div className="mt-0.5 text-xs font-bold uppercase tracking-wide text-base-content/40">{label}</div>
+                  <div className="mt-0.5 font-semibold uppercase stat-desc">{label}</div>
                 </div>
               ))}
             </div>
@@ -688,6 +719,8 @@ function App() {
 // AuthCard — rendered inside the backdrop modal
 // ===========================================================================
 function AuthCard({ view, setView, name, setName, email, setEmail, password, setPassword, error, loading, onLogin, onSignup, onClose }) {
+  const [formParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
+
   return (
     <div className="w-full max-w-sm rounded-2xl border border-base-200 bg-base-100 p-6 shadow-2xl">
       {/* Header */}
@@ -718,7 +751,7 @@ function AuthCard({ view, setView, name, setName, email, setEmail, password, set
       </div>
 
       {/* Form */}
-      <form onSubmit={view === 'login' ? onLogin : onSignup} className="space-y-3">
+      <form ref={formParent} onSubmit={view === 'login' ? onLogin : onSignup} className="space-y-3">
         {view === 'signup' && (
           <AuthField label="Name" type="text" value={name} onChange={setName} placeholder="Your name" required autoComplete="name" />
         )}
@@ -774,8 +807,8 @@ function NavButton({ active, onClick, icon: Icon, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
-        active ? 'bg-white/20 text-white' : 'text-white/55 hover:bg-white/10 hover:text-white/90'
+      className={`cursor-pointer flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+        active ? 'border border-primary/35 bg-base-100/70 text-primary shadow-xs' : 'text-base-content/60 hover:bg-base-100/70 hover:text-base-content'
       }`}
     >
       <Icon size={16} />
@@ -792,7 +825,13 @@ function Panel({ children, className = '' }) {
   )
 }
 
-const AVATAR_COLORS = ['#0f172a', '#059669', '#eab308', '#f97316', '#e2e8f0']
+const AVATAR_COLORS = [
+  'var(--color-primary)',
+  'var(--color-secondary)',
+  'var(--color-accent)',
+  'var(--color-neutral)',
+  'var(--color-base-content)',
+]
 
 function PlayerAvatar({ name, size = 36, className = '' }) {
   return (
@@ -809,19 +848,22 @@ function PlayerAvatar({ name, size = 36, className = '' }) {
 }
 
 function HeaderUserMenu({ backend, player, onLogin, onSignup, onLogout }) {
+  const [menuParent] = useAutoAnimate({ duration: 160, easing: 'ease-out' })
+
   return (
     <div className="dropdown dropdown-end self-start">
       <button
         type="button"
         tabIndex={0}
-        className="btn btn-ghost h-auto min-h-0 rounded-full border border-white/20 bg-white/10 py-1 pl-1 pr-3 text-white hover:border-white/30 hover:bg-white/20"
+        className="btn btn-ghost h-auto min-h-0 rounded-full border border-base-content/10 bg-base-100/70 py-1 pl-1 pr-2.5 text-base-content shadow-xs hover:border-primary/25 hover:bg-base-100"
       >
         <PlayerAvatar name={player?.name || 'Guest'} size={32} />
         <span className="hidden max-w-40 truncate text-xs font-black normal-case sm:inline">
           {player?.name || 'Guest'}
         </span>
+        <Menu size={15} className="shrink-0 text-base-content/45" />
       </button>
-      <ul tabIndex={0} className="menu dropdown-content z-20 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl">
+      <ul ref={menuParent} tabIndex={0} className="menu dropdown-content z-20 mt-2 w-56 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-md">
         <li className="menu-title">
           <span className="truncate">{player?.name || 'Guest'}</span>
         </li>
@@ -843,12 +885,22 @@ function HeaderUserMenu({ backend, player, onLogin, onSignup, onLogout }) {
   )
 }
 
-function TeamFlag({ name }) {
-  const code = COUNTRY_CODES[name]
-  if (!code) return null
-  const Flag = Flags[code]
-  if (!Flag) return null
-  return <Flag className="h-3.5 w-5 shrink-0 rounded-xs object-cover shadow-sm" />
+function TeamCrest({ name, src }) {
+  if (!src) return (
+    <div className="flex h-6 w-9 shrink-0 items-center justify-center rounded-full border border-base-300 bg-base-200 text-[10px] font-black text-base-content/45">
+      {name?.slice(0, 2).toUpperCase() || '??'}
+    </div>
+  )
+
+  return (
+    <img
+      src={src}
+      alt={`${name} crest`}
+      className="h-6 w-9 shrink-0 rounded-sm object-cover shadow-sm"
+      loading="lazy"
+      referrerPolicy="no-referrer"
+    />
+  )
 }
 
 function UserStatsCard({ player, stats }) {
@@ -882,11 +934,11 @@ function StatTile({ icon: Icon, label, value, tone }) {
   }
   return (
     <div className="rounded-xl border border-base-300 bg-base-100 p-3">
-      <div className={`mb-1.5 flex items-center gap-1.5 ${accentClass[tone]}`}>
-        <Icon size={13} />
-        <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
-      </div>
-      <div className="text-2xl font-black text-base-content">{value}</div>
+        <span className="text-xs font-bold uppercase tracking-wide stat-title">{label}</span>
+        <div className={`flex items-center gap-1 ${accentClass[tone]}`}>
+          <Icon size={20} />
+      <div className="text-2xl font-black text-neutral">{value}</div>
+        </div>
     </div>
   )
 }
@@ -926,6 +978,7 @@ function DemoRegistrationCard({ name, setName, onSubmit }) {
 // ===========================================================================
 function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onShowAuth }) {
   const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
+  const [matchesParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
   const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
   const visibleMatches  = matches.filter((m) => m.stage === activeStageInfo.stage)
 
@@ -936,12 +989,30 @@ function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onSho
           <h2 className="text-2xl font-black sm:text-3xl">Predictions</h2>
           <p className="mt-0.5 text-sm text-base-content/60">Pick the result before kickoff to score points.</p>
         </div>
-        <span className="badge badge-outline text-neutral/70 badge-lg shrink-0 font-bold text-sm">3 pts per correct pick</span>
+        <details className="dropdown dropdown-end shrink-0">
+          <summary className="btn btn-soft btn-sm rounded-xl">
+            Scoring
+            <CircleHelp size={16} />
+          </summary>
+          <div className="dropdown-content z-20 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl">
+            <h3 className="font-black">Scoring system</h3>
+            <ul className="mt-3 space-y-2 text-sm text-base-content/70">
+              <li className="flex gap-2">
+                <CheckCircle2 className="mt-0.5 shrink-0 text-success" size={16} />
+                <span>Correctly picking the match result earns 3 points.</span>
+              </li>
+              <li className="flex gap-2">
+                <Lock className="mt-0.5 shrink-0 text-warning" size={16} />
+                <span>Picks lock at kickoff and cannot be changed afterward.</span>
+              </li>
+            </ul>
+          </div>
+        </details>
       </div>
 
       <StageTabs activeStage={activeStage} matches={matches} onChange={setActiveStage} />
 
-      <div className="grid gap-3">
+      <div ref={matchesParent} className="grid gap-3">
         {visibleMatches.length === 0 && (
           <Panel>
             <div className="py-10 text-center">
@@ -967,8 +1038,10 @@ function PredictionsPage({ matches, playerPredictions, savingPick, onPick, onSho
 }
 
 function StageTabs({ activeStage, matches, onChange }) {
+  const [tabsParent] = useAutoAnimate({ duration: 180, easing: 'ease-out' })
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Prediction rounds">
+    <div ref={tabsParent} className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Prediction rounds">
       {STAGE_TABS.map((stage) => {
         const count  = matches.filter((m) => m.stage === stage.stage).length
         const active = activeStage === stage.id
@@ -981,12 +1054,12 @@ function StageTabs({ activeStage, matches, onChange }) {
             onClick={() => onChange(stage.id)}
             className={`flex shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-bold transition-colors ${
               active
-                ? 'border-primary bg-primary text-primary-content'
+                ? 'border-primary/35 bg-base-100 text-primary shadow-xs'
                 : 'border-base-300 bg-base-100 text-base-content/55 hover:border-base-content/30 hover:text-base-content'
             }`}
           >
             {stage.label}
-            <span className={`rounded-lg px-1.5 py-0.5 text-xs font-black ${active ? 'bg-white/20' : 'bg-base-200'}`}>
+            <span className={`rounded-lg px-1.5 py-0.5 text-xs font-black ${active ? 'bg-primary/10 text-primary' : 'bg-base-200'}`}>
               {count}
             </span>
           </button>
@@ -998,6 +1071,12 @@ function StageTabs({ activeStage, matches, onChange }) {
 
 function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth }) {
   const locked = isLocked(match)
+  const isFinal = Boolean(match.result)
+  const showScore = hasMatchScore(match)
+  const pickIsCorrect = isFinal && prediction?.pick === match.result
+  const pickStatus = prediction
+    ? `${isFinal ? (pickIsCorrect ? 'Correct pick' : 'Missed pick') : 'Your pick'}: ${pickLabel(match, prediction.pick)}`
+    : (onShowAuth ? 'Sign in to pick' : 'No pick yet')
   const pickOptions = [
     { pick: 'home', label: 'Home', name: match.home },
     { pick: 'draw', label: 'Draw', name: '—' },
@@ -1014,24 +1093,29 @@ function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth
 
       <div className="p-4">
         {/* Teams */}
-        <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="mb-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="flex flex-col items-end gap-1.5">
-            <TeamFlag name={match.home} />
+            <TeamCrest name={match.home} src={match.homeCrest} />
             <div className="text-right text-base font-black leading-tight">{match.home}</div>
           </div>
           <div className="flex items-center justify-center">
-            <span className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-neutral/60">VS</span>
+            {showScore ? (
+              <span className="rounded-xl border border-base-300 bg-base-200 px-3 py-1.5 text-base font-black text-base-content">
+                {match.homeScore}–{match.awayScore}
+              </span>
+            ) : (
+              <span className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-neutral/60">VS</span>
+            )}
           </div>
           <div className="flex flex-col items-start gap-1.5">
-            <TeamFlag name={match.away} />
+            <TeamCrest name={match.away} src={match.awayCrest} />
             <div className="text-base font-black leading-tight">{match.away}</div>
           </div>
         </div>
 
         {/* Kickoff + venue */}
-        <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/45">
+        <div className="flex justify-center mb-4 text-xs text-base-content/45">
           <span className="flex items-center gap-1"><CalendarClock size={12} />{formatKickoff(match.kickoff)}</span>
-          {match.venue && <><span className="text-base-content/25">·</span><span>{match.venue}</span></>}
         </div>
 
         {/* Pick buttons — clicking triggers auth modal if not logged in */}
@@ -1051,7 +1135,7 @@ function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth
                 onClick={handleClick}
                 className={`cursor-pointer rounded-xl border px-2 py-3 text-center transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                   active
-                    ? 'border-primary bg-primary text-primary-content'
+                    ? 'border-primary/50 bg-primary/85 text-primary-content'
                     : 'border-base-300 bg-base-100 hover:border-primary/40 hover:bg-primary/5 hover:text-primary'
                 }`}
               >
@@ -1064,7 +1148,16 @@ function MatchPredictionCard({ match, prediction, savingPick, onPick, onShowAuth
 
         {/* Footer */}
         <div className="mt-3 flex items-center justify-between text-xs text-base-content/45">
-          <span>{prediction ? `Your pick: ${pickLabel(match, prediction.pick)}` : (onShowAuth ? 'Sign in to pick' : 'No pick yet')}</span>
+          <span className={`flex items-center gap-1.5 font-black ${
+            isFinal && prediction
+              ? (pickIsCorrect ? 'text-success' : 'text-error')
+              : 'text-base-content/60'
+          }`}>
+            {isFinal && prediction && (
+              pickIsCorrect ? <CheckCircle2 size={14} /> : <XCircle size={14} />
+            )}
+            {pickStatus}
+          </span>
           <span className="flex items-center gap-1">
             {locked ? <Lock size={12} /> : <CheckCircle2 size={12} />}
             {locked ? 'Locked' : 'Open'}
@@ -1106,6 +1199,7 @@ function StatusPill({ match }) {
 // ===========================================================================
 function LeaderboardPage({ leaderboard, matches, predictions }) {
   const scored = matches.filter((m) => m.result).length
+  const [leaderboardParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
 
   return (
     <div className="space-y-4">
@@ -1136,7 +1230,7 @@ function LeaderboardPage({ leaderboard, matches, predictions }) {
         {leaderboard.length === 0 ? (
           <div className="py-8 text-center text-sm font-semibold text-base-content/40">No players yet.</div>
         ) : (
-          <div className="space-y-2">
+          <div ref={leaderboardParent} className="space-y-2">
             {leaderboard.map((player, index) => {
               const accuracy = player.predictions > 0
                 ? Math.round((player.correct / player.predictions) * 100)
@@ -1222,6 +1316,8 @@ function LeaderboardPage({ leaderboard, matches, predictions }) {
 // Admin
 // ===========================================================================
 function AdminPage({ adminPin, adminUnlocked, setAdminPin, unlockAdmin, backend, newMatch, setNewMatch, addMatch, matches, updateMatch, deleteMatch }) {
+  const [fixturesParent] = useAutoAnimate({ duration: 200, easing: 'ease-out' })
+
   if (!adminUnlocked) {
     return (
       <Panel>
@@ -1281,7 +1377,7 @@ function AdminPage({ adminPin, adminUnlocked, setAdminPin, unlockAdmin, backend,
           <h3 className="font-black">Fixtures</h3>
           <span className="rounded-full border border-base-300 bg-base-200 px-2 py-1 text-xs font-semibold text-base-content/50">{backend} mode</span>
         </div>
-        <div className="space-y-2">
+        <div ref={fixturesParent} className="space-y-2">
           {matches.map((match) => (
             <MatchAdminCard
               key={match.id}
