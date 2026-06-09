@@ -56,7 +56,7 @@ export default function PoolStatusCard({ playersCount, matchesCount, completedMa
       <div className="grid grid-cols-3 gap-2">
         {[
           { key: 'matches', value: matchesCount, label: <T>Matches</T> },
-          { key: 'ended', value: completedMatches, label: <T>Ended</T> },
+          { key: 'ended', value: completedMatches, label: <T context="Played games in a tournament">Played</T> },
           { key: 'total-picks', value: totalPredictions, label: <T>Total Picks</T> },
         ].map(({ key, label, value }) => (
           <div key={key} className="rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">

@@ -1,13 +1,9 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useRef, useState } from 'react'
-import { Activity, Lock, Medal, Trophy } from 'lucide-react'
+import { Activity, Medal, Trophy, Users } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
 import PlayerAvatar from '../shared/PlayerAvatar'
-
-function isLocked(match) {
-  return new Date(match.kickoff).getTime() <= Date.now() || match.status !== 'scheduled'
-}
 
 function leaderboardPlayerId(player) {
   return String(player.player || player.id || '')
@@ -121,8 +117,8 @@ function NameHoverCard({ player, index, accuracy, onOpenProfile }) {
   )
 }
 
-export default function LeaderboardPage({ leaderboard, matches, predictions, onOpenProfile }) {
-  const scored = matches.filter((m) => m.result).length
+export default function LeaderboardPage({ leaderboard, matches, onOpenProfile }) {
+  const playedGames = matches.filter((m) => m.status !== 'scheduled').length
   const [leaderboardParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
 
   return (
@@ -134,9 +130,9 @@ export default function LeaderboardPage({ leaderboard, matches, predictions, onO
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Activity, key: 'predictions', value: predictions.length, label: <T>Predictions</T> },
-          { icon: Trophy, key: 'matches-scored', value: scored, label: <T>Matches scored</T> },
-          { icon: Lock, key: 'locked', value: matches.filter(isLocked).length, label: <T>Locked</T> },
+          { icon: Users, key: 'players', value: leaderboard.length, label: <T>Players</T> },
+          { icon: Activity, key: 'played-games', value: playedGames, label: <T context="Played games on a sports prediction pool">Played</T> },
+          { icon: Trophy, key: 'total-games', value: matches.length, label: <T>Total</T> },
         ].map(({ icon: Icon, key, label, value }) => (
           <Panel key={key}>
             <div className="mb-1 flex items-center gap-1.5 text-primary">
