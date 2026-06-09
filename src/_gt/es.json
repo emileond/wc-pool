@@ -1,0 +1,151 @@
+{
+  "038dd6e7831379df": [
+    "Únete a ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para hacer tus pronósticos y empezar a seguir tu puntuación."
+  ],
+  "14d42f94f3db5683": "seg",
+  "182a659d70f8ea72": "Contraseña",
+  "1ae6ebce4c10d7ff": "Esperando partidos",
+  "20529ca475e73f99": "Tema",
+  "20d26104469b0ebc": "Pronósticos totales",
+  "27f4c5c0397237f8": "No se encontró al jugador en esta clasificación.",
+  "2c0355d081fe8c67": "Todas las predicciones de este jugador.",
+  "2d8eea43eae52851": "El pool comienza",
+  "2df5eccdce6e0a24": [
+    "Únete a ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para enviar pronósticos"
+  ],
+  "2f59369d3cd781f4": "Sistema de puntuación",
+  "3070a60b00ad489a": "Nombre",
+  "30839878c6d4d317": "Agrupar por",
+  "374dac09151d4578": "Pendiente",
+  "3b207d052380c219": "Unirse al pool",
+  "3bbd0010058ee8cd": "Jugados",
+  "3c40cb2858159cdb": "Aciertos",
+  "3e067ffe5ea748a3": "Mostrar partidos con pronóstico",
+  "3f5c2b399f8d3b78": "Clasificación",
+  "3f67e3a6f3e87acb": [
+    "Has iniciado sesión como ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ". Puedes seguir navegando o unirte a este pool cuando estés listo."
+  ],
+  "4453e4757b4f4cf9": "Actualizando datos del pool…",
+  "45364730b756553d": "min",
+  "46893f53c8bd800f": {
+    "c": [
+      {
+        "c": "Predicciones",
+        "i": 2,
+        "t": "NavButton"
+      },
+      {
+        "c": "Clasificación",
+        "i": 3,
+        "t": "NavButton"
+      }
+    ],
+    "i": 1,
+    "t": "nav"
+  },
+  "469aae33a5a5bc74": "Cerrado",
+  "47f1f38a0c8edfff": [
+    "Inicia sesión para enviar pronósticos para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "49afa076f2982524": "Aún no hay pronósticos.",
+  "49e7ca6fc1ecfc58": "jugadores",
+  "4d04bf9a6c45879e": "Invitado",
+  "537b386051c8204c": "horas",
+  "53fa193620953350": "Jugadores",
+  "5599e833dc88e539": "Abrir la URL de un espacio de trabajo",
+  "579e35d0bb5255e5": "Próximos",
+  "5884ac0b75ad8bdf": "Unirse al pool",
+  "60ef184a1d688413": "Precisión",
+  "635cf4862a9b89d9": "ganó",
+  "6ee033205ed5bff5": "Los pronósticos se cierran al inicio del partido y no pueden cambiarse después.",
+  "76230d7945e51a03": "Jugados",
+  "7853bd9e23f25bb6": "Total",
+  "78a1a02732fc74e8": "Cerrar sesión",
+  "79afc76852a2982f": "VS",
+  "7ea0ff7a55f46ac0": "Crea una cuenta.",
+  "7f71b8e933aee987": "¿Ya tienes cuenta? ",
+  "8450121ebdfa1dae": "Crear cuenta",
+  "845ba43e0aa91b4f": "Empieza en",
+  "8555b83cd7f215c4": "Elige el resultado antes del inicio del partido para sumar puntos.",
+  "86a50043ca756a01": "Pool",
+  "8b324ba31d982621": "Inicia sesión para enviar pronósticos.",
+  "9099d0df3e0ceef5": "Te damos de nuevo la bienvenida",
+  "90bf57558437c008": {
+    "c": [
+      {
+        "i": 2,
+        "t": "UserPlus"
+      },
+      "¿Todavía no eres miembro?"
+    ],
+    "i": 1,
+    "t": "div"
+  },
+  "92267e3641701d68": "Puntos",
+  "927cb48154a25f55": "Partidos",
+  "98ad8329b7eb7fe4": "Espacio de trabajo no encontrado",
+  "997879730b235a08": "Únete a un espacio de trabajo para hacer tus pronósticos y empezar a seguir tu puntuación.",
+  "9a06fd459ce858b9": "En vivo",
+  "a482665efe0bb687": "Predicciones",
+  "a913defaad3414ad": "Aún no hay jugadores.",
+  "af7eb4f9c7f0f575": "Filtros",
+  "afc307fd60d5e156": "Pronósticos",
+  "b2be70822d55f16a": "Abierto",
+  "b50c41465e5408b3": "Correo electrónico",
+  "b6e27ab2537ef874": "Crea una",
+  "bbe653637f55dfe4": "Mostrar partidos anteriores",
+  "c047f54c701ee499": "Incorrecto",
+  "c4d652790254d3f2": "El pool comenzó",
+  "c544b470667f829f": "Todavía no hay estadísticas",
+  "cc73d3632b0806e2": "¿No tienes cuenta? ",
+  "cdc5fc4d2cdf859b": "días",
+  "cfb2b0875cb6f217": "Se actualiza en vivo a medida que se publican los resultados de los partidos.",
+  "d35954604b717007": "Tus estadísticas",
+  "d849d0bc1d9afbde": "Los pronósticos se bloquean al comenzar los partidos.",
+  "d9681ac7e4613ff4": "Únete ahora",
+  "dbe33dcc7842dccc": [
+    "Crea una cuenta para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "e52151684b116f53": {
+    "c": "Únete",
+    "i": 1,
+    "t": "button"
+  },
+  "e851a2ea3914e1a1": "Sin espacio de trabajo",
+  "ec21b232e0eacd4a": "Iniciar sesión",
+  "ec53e8ea9fdd198d": "Volver a la clasificación",
+  "ed67b5ef4903b974": "Puntuación",
+  "efabe3e18be04271": "Idioma",
+  "fb7900f78343f2d1": "Acertar el resultado del partido otorga 3 puntos.",
+  "ffb37ba7ae41476e": "Puntuación"
+}

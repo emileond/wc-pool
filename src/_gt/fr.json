@@ -1,0 +1,151 @@
+{
+  "038dd6e7831379df": [
+    "Rejoignez ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " pour soumettre vos pronostics et suivre votre score."
+  ],
+  "14d42f94f3db5683": "s",
+  "182a659d70f8ea72": "Mot de passe",
+  "1ae6ebce4c10d7ff": "En attente du calendrier des matchs",
+  "20529ca475e73f99": "Thème",
+  "20d26104469b0ebc": "Total des pronostics",
+  "27f4c5c0397237f8": "Joueur introuvable dans ce classement.",
+  "2c0355d081fe8c67": "Toutes les prédictions de ce joueur.",
+  "2d8eea43eae52851": "Le pool commence",
+  "2df5eccdce6e0a24": [
+    "Rejoignez ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " pour faire vos pronostics"
+  ],
+  "2f59369d3cd781f4": "Barème",
+  "3070a60b00ad489a": "Nom",
+  "30839878c6d4d317": "Regroupement",
+  "374dac09151d4578": "En attente",
+  "3b207d052380c219": "Rejoindre le pool",
+  "3bbd0010058ee8cd": "Matchs joués",
+  "3c40cb2858159cdb": "Corrects",
+  "3e067ffe5ea748a3": "Afficher les matchs avec pronostics",
+  "3f5c2b399f8d3b78": "Classement",
+  "3f67e3a6f3e87acb": [
+    "Connecté en tant que ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ". Vous pouvez continuer à parcourir le site ou rejoindre cette pool quand vous serez prêt."
+  ],
+  "4453e4757b4f4cf9": "Actualisation des données du pool…",
+  "45364730b756553d": "min",
+  "46893f53c8bd800f": {
+    "c": [
+      {
+        "c": "Prédictions",
+        "i": 2,
+        "t": "NavButton"
+      },
+      {
+        "c": "Classement",
+        "i": 3,
+        "t": "NavButton"
+      }
+    ],
+    "i": 1,
+    "t": "nav"
+  },
+  "469aae33a5a5bc74": "Verrouillé",
+  "47f1f38a0c8edfff": [
+    "Connectez-vous pour soumettre vos pronostics pour ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "49afa076f2982524": "Aucun pronostic pour le moment.",
+  "49e7ca6fc1ecfc58": "joueurs",
+  "4d04bf9a6c45879e": "Invité",
+  "537b386051c8204c": "heures",
+  "53fa193620953350": "Joueurs",
+  "5599e833dc88e539": "Ouvrir l’URL d’un espace de travail",
+  "579e35d0bb5255e5": "À venir",
+  "5884ac0b75ad8bdf": "Rejoindre le pool",
+  "60ef184a1d688413": "Précision",
+  "635cf4862a9b89d9": "gagné",
+  "6ee033205ed5bff5": "Les pronostics sont verrouillés au coup d'envoi et ne peuvent plus être modifiés ensuite.",
+  "76230d7945e51a03": "Matchs joués",
+  "7853bd9e23f25bb6": "Total",
+  "78a1a02732fc74e8": "Se déconnecter",
+  "79afc76852a2982f": "VS",
+  "7ea0ff7a55f46ac0": "Créez un compte.",
+  "7f71b8e933aee987": "Vous avez déjà un compte ? ",
+  "8450121ebdfa1dae": "Créer un compte",
+  "845ba43e0aa91b4f": "Débute dans",
+  "8555b83cd7f215c4": "Choisissez le résultat avant le coup d'envoi pour marquer des points.",
+  "86a50043ca756a01": "Pool",
+  "8b324ba31d982621": "Connectez-vous pour soumettre vos pronostics.",
+  "9099d0df3e0ceef5": "Bon retour",
+  "90bf57558437c008": {
+    "c": [
+      {
+        "i": 2,
+        "t": "UserPlus"
+      },
+      "Pas encore inscrit"
+    ],
+    "i": 1,
+    "t": "div"
+  },
+  "92267e3641701d68": "Points",
+  "927cb48154a25f55": "Matchs",
+  "98ad8329b7eb7fe4": "Espace de travail introuvable",
+  "997879730b235a08": "Rejoignez un espace de travail pour soumettre vos pronostics et suivre votre score.",
+  "9a06fd459ce858b9": "En direct",
+  "a482665efe0bb687": "Prédictions",
+  "a913defaad3414ad": "Aucun joueur pour le moment.",
+  "af7eb4f9c7f0f575": "Filtres",
+  "afc307fd60d5e156": "Pronostics",
+  "b2be70822d55f16a": "Ouvert",
+  "b50c41465e5408b3": "E-mail",
+  "b6e27ab2537ef874": "Créer un compte",
+  "bbe653637f55dfe4": "Afficher les matchs passés",
+  "c047f54c701ee499": "Faux",
+  "c4d652790254d3f2": "Le pool a commencé",
+  "c544b470667f829f": "Aucune stat pour le moment",
+  "cc73d3632b0806e2": "Vous n’avez pas de compte ? ",
+  "cdc5fc4d2cdf859b": "jours",
+  "cfb2b0875cb6f217": "Mise à jour en direct à mesure que les résultats des matchs sont publiés.",
+  "d35954604b717007": "Vos stats",
+  "d849d0bc1d9afbde": "Les pronostics sont verrouillés au coup d’envoi des matchs.",
+  "d9681ac7e4613ff4": "Rejoindre",
+  "dbe33dcc7842dccc": [
+    "Créez un compte pour ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "e52151684b116f53": {
+    "c": "Rejoindre",
+    "i": 1,
+    "t": "button"
+  },
+  "e851a2ea3914e1a1": "Aucun espace de travail",
+  "ec21b232e0eacd4a": "Se connecter",
+  "ec53e8ea9fdd198d": "Retour au classement",
+  "ed67b5ef4903b974": "Barème",
+  "efabe3e18be04271": "Langue",
+  "fb7900f78343f2d1": "Pronostiquer correctement le résultat du match rapporte 3 points.",
+  "ffb37ba7ae41476e": "Score"
+}

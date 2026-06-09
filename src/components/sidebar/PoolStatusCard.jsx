@@ -1,6 +1,30 @@
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
 
+function formatCompactNumber(value) {
+  const numericValue = Number(value) || 0
+
+  if (numericValue < 1000) return String(numericValue)
+
+  const absValue = Math.abs(numericValue)
+  const units = [
+    { suffix: 'B', threshold: 1e9 },
+    { suffix: 'M', threshold: 1e6 },
+    { suffix: 'k', threshold: 1e3 },
+  ]
+
+  for (const { suffix, threshold } of units) {
+    if (absValue >= threshold) {
+      const scaled = numericValue / threshold
+      const rounded = Math.round(scaled * 10) / 10
+      const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+      return `${text}${suffix}`
+    }
+  }
+
+  return String(numericValue)
+}
+
 function PoolCountdown({ countdown }) {
   if (!countdown) {
     return (
@@ -57,11 +81,11 @@ export default function PoolStatusCard({ playersCount, matchesCount, completedMa
         {[
           { key: 'matches', value: matchesCount, label: <T>Matches</T> },
           { key: 'ended', value: completedMatches, label: <T context="Played games in a tournament">Played</T> },
-          { key: 'total-picks', value: totalPredictions, label: <T>Total Picks</T> },
+          { key: 'total-picks', value: formatCompactNumber(totalPredictions), label: <T>Total Picks</T> },
         ].map(({ key, label, value }) => (
-          <div key={key} className="rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">
+          <div key={key} className="min-w-0 rounded-xl border border-base-300 bg-base-200/50 p-3 text-center">
             <div className="text-xl font-black">{value}</div>
-            <div className="mt-0.5 font-semibold uppercase stat-desc">{label}</div>
+            <div className="mt-0.5 whitespace-normal text-[11px] font-semibold uppercase leading-tight stat-desc">{label}</div>
           </div>
         ))}
       </div>

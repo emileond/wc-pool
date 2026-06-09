@@ -1,6 +1,6 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { useRef, useState } from 'react'
-import { Activity, Medal, Trophy, Users } from 'lucide-react'
+import { Activity, Trophy, Users } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
 import PlayerAvatar from '../shared/PlayerAvatar'
@@ -12,29 +12,31 @@ function leaderboardPlayerId(player) {
 function podiumStyleForIndex(index) {
   const podium = [
     {
-      row: 'border-yellow-300 bg-yellow-50 shadow-sm',
-      rank: 'border-yellow-300 bg-yellow-400/20 text-yellow-700',
-      score: 'text-yellow-700',
-      medal: 'Gold',
+      row: 'border-yellow-300 bg-yellow-50 shadow-sm dark:border-yellow-500/35 dark:bg-yellow-500/12',
+      rank: 'border-yellow-300 bg-yellow-400/20 text-yellow-700 dark:border-yellow-500/45 dark:bg-yellow-500/20 dark:text-yellow-200',
     },
     {
-      row: 'border-slate-300 bg-slate-100/80 shadow-sm',
-      rank: 'border-slate-300 bg-slate-200 text-slate-600',
-      score: 'text-slate-600',
-      medal: 'Silver',
+      row: 'border-slate-300 bg-slate-100/80 shadow-sm dark:border-slate-400/30 dark:bg-slate-400/10',
+      rank: 'border-slate-300 bg-slate-200 text-slate-600 dark:border-slate-400/40 dark:bg-slate-300/20 dark:text-slate-200',
     },
     {
-      row: 'border-orange-300 bg-orange-50 shadow-sm',
-      rank: 'border-orange-300 bg-orange-200/70 text-orange-700',
-      score: 'text-orange-700',
-      medal: 'Bronze',
+      row: 'border-orange-300 bg-orange-50 shadow-sm dark:border-orange-500/35 dark:bg-orange-500/12',
+      rank: 'border-orange-300 bg-orange-200/70 text-orange-700 dark:border-orange-500/45 dark:bg-orange-500/20 dark:text-orange-200',
     },
   ]
   return podium[index]
 }
 
+function podiumMedalSrcForIndex(index) {
+  const medalPaths = [
+    '/medals/1st.png',
+    '/medals/2nd.png',
+    '/medals/3rd.png',
+  ]
+  return medalPaths[index] || ''
+}
+
 function NameHoverCard({ player, index, accuracy, onOpenProfile }) {
-  const podiumStyle = podiumStyleForIndex(index)
   const playerId = leaderboardPlayerId(player)
   const cardRef = useRef(null)
   const [open, setOpen] = useState(false)
@@ -87,14 +89,7 @@ function NameHoverCard({ player, index, accuracy, onOpenProfile }) {
           <PlayerAvatar name={player.name} size={34} />
           <div className="min-w-0">
             <div className="truncate text-sm font-black">{player.name}</div>
-            <div className="flex items-center gap-1.5 text-xs text-base-content/55">
-              <span>#{index + 1}</span>
-              {podiumStyle && (
-                <span className={`inline-flex items-center rounded-full border p-1 ${podiumStyle.rank}`}>
-                  <Medal size={10} aria-label={`${podiumStyle.medal} medal`} />
-                </span>
-              )}
-            </div>
+            <div className="flex items-center gap-1.5 text-xs text-base-content/50">#{index + 1}</div>
           </div>
         </div>
 
@@ -159,16 +154,26 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                 <div
                   key={player.id}
                   className={`flex items-center gap-3 rounded-xl border p-3 transition-colors ${
-                    podiumStyle ? podiumStyle.row : 'border-base-200 hover:bg-base-200/40'
+                    podiumStyle ? podiumStyle.row : 'border-base-200 hover:bg-base-200 hover:border-base-300'
                   }`}
                 >
-                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
-                    podiumStyle ? podiumStyle.rank : 'border-base-300 bg-base-100 text-base-content/40'
-                  }`}>
-                    {index + 1}
-                  </div>
+                  {podiumMedalSrcForIndex(index) ? (
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center">
+                      <img
+                        src={podiumMedalSrcForIndex(index)}
+                        alt={`${index + 1} place`}
+                        className="h-9 w-9 object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
+                      podiumStyle ? podiumStyle.rank : 'border-base-300 bg-base-100 text-base-content/80'
+                    }`}>
+                      {index + 1}
+                    </div>
+                  )}
 
-                  <PlayerAvatar name={player.name} size={38} className="border border-white shadow-sm" />
+                  <PlayerAvatar name={player.name} size={38} className="border border-white shadow-sm dark:border-white/20" />
 
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
@@ -182,11 +187,6 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                       ) : (
                         <div className="truncate font-black">{player.name}</div>
                       )}
-                      {podiumStyle && (
-                        <span className={`hidden items-center rounded-full border p-1 sm:inline-flex ${podiumStyle.rank}`}>
-                          <Medal size={12} aria-label={`${podiumStyle.medal} medal`} />
-                        </span>
-                      )}
                     </div>
                     <div className="mt-1 flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-base-300">
@@ -196,17 +196,13 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                         />
                       </div>
                       <span className="shrink-0 text-xs text-base-content/40">
-                        {player.correct}/{player.predictions} <T>picks</T>
+                        {player.correct}/{player.predictions}
                       </span>
                     </div>
                   </div>
-
-                  <div className="text-right">
-                    <div className={`text-xl font-black tabular-nums ${podiumStyle?.score || ''}`}>
+                    <div className="text-right text-xl font-black tabular-nums">
                       {player.points}
                     </div>
-                    <div className="text-xs font-bold uppercase tracking-wide text-base-content/40"><T>pts</T></div>
-                  </div>
                 </div>
               )
             })}

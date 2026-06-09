@@ -1,5 +1,5 @@
 import {CalendarClock, CheckCircle2, Lock, XCircle} from 'lucide-react'
-import {T, useGT, Var} from 'gt-react'
+import {T, useGT} from 'gt-react'
 
 function formatKickoff(value) {
     return new Intl.DateTimeFormat(undefined, {
@@ -106,7 +106,8 @@ export default function MatchPredictionCard({
             className={`overflow-hidden border border-base-300 bg-base-100 ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
             <div
                 className={`flex items-center gap-2 border-b border-base-300 bg-base-200/50 text-xs ${compact ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
-                <span className="font-semibold text-base-content/50">{match.stage}</span>
+                <T context="sports event stage"><span
+                    className="font-semibold text-base-content/50">{match.stage}</span></T>
                 <div className="ml-auto"><StatusPill match={match}/></div>
             </div>
 
@@ -114,10 +115,11 @@ export default function MatchPredictionCard({
                 <div className={`grid grid-cols-[1fr_auto_1fr] items-center ${compact ? 'mb-2 gap-3' : 'mb-3 gap-4'}`}>
                     <div className="flex flex-col items-end gap-1.5">
                         <TeamCrest name={match.home} src={match.homeCrest}/>
-                        <T context="Sports or country team">
-                            <div className={`text-right font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
-                                <Var>{match.home}</Var></div>
-                        </T>
+                        <div className={`text-right font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
+                            <T context="Sports or country team">
+                                {match.home}
+                            </T>
+                        </div>
                     </div>
                     <div className="flex items-center justify-center">
                         {showScore ? (
@@ -127,14 +129,15 @@ export default function MatchPredictionCard({
               </span>
                         ) : (
                             <span
-                                className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-neutral/60"><T>VS</T></span>
+                                className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-base-content/70"><T>VS</T></span>
                         )}
                     </div>
                     <div className="flex flex-col items-start gap-1.5">
                         <TeamCrest name={match.away} src={match.awayCrest}/>
-                        <T context="Sports or country team">
-                            <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}><Var>{match.away}</Var></div>
-                        </T>
+
+                        <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}><T
+                            context="Sports or country team">{match.away}</T></div>
+
                     </div>
                 </div>
 
@@ -171,13 +174,15 @@ export default function MatchPredictionCard({
                                         : 'border-base-300 bg-base-100 hover:border-primary/40 hover:bg-primary/5 hover:text-primary'
                                 }`}
                             >
-                                <div
-                                    className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">{loading ? '…' : label}</div>
-                                <T context="country or sports team">
-                                    <div className="truncate text-sm font-black">
-                                        <Var>{name}</Var>
-                                    </div>
+                                <T context="sports match">
+                                    <div
+                                        className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">{loading ? '…' : label}</div>
                                 </T>
+                                <div className="truncate text-sm font-black">
+                                    <T context="country or sports team">
+                                        {name}
+                                    </T>
+                                </div>
                             </button>
                         )
                     })}
@@ -189,7 +194,9 @@ export default function MatchPredictionCard({
               isFinal && prediction ? (pickIsCorrect ? 'text-success' : 'text-error') : 'text-base-content/60'
           }`}>
             {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
+              <T context="Status of pick in a sports prediction pool">
               {pickStatus}
+              </T>
           </span>
                     <span className="flex items-center gap-1">
             {locked ? <Lock size={12}/> : <CheckCircle2 size={12}/>}

@@ -1,0 +1,151 @@
+{
+  "038dd6e7831379df": [
+    "Participe de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para enviar seus palpites e começar a acompanhar sua pontuação."
+  ],
+  "14d42f94f3db5683": "seg",
+  "182a659d70f8ea72": "Senha",
+  "1ae6ebce4c10d7ff": "Aguardando partidas",
+  "20529ca475e73f99": "Tema",
+  "20d26104469b0ebc": "Total de palpites",
+  "27f4c5c0397237f8": "Jogador não encontrado nesta classificação.",
+  "2c0355d081fe8c67": "Todas as previsões deste jogador.",
+  "2d8eea43eae52851": "O bolão começa",
+  "2df5eccdce6e0a24": [
+    "Participe de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para enviar palpites"
+  ],
+  "2f59369d3cd781f4": "Sistema de pontuação",
+  "3070a60b00ad489a": "Nome",
+  "30839878c6d4d317": "Agrupamento",
+  "374dac09151d4578": "Pendente",
+  "3b207d052380c219": "Participar do bolão",
+  "3bbd0010058ee8cd": "Jogados",
+  "3c40cb2858159cdb": "Acertos",
+  "3e067ffe5ea748a3": "Mostrar partidas com palpite",
+  "3f5c2b399f8d3b78": "Classificação",
+  "3f67e3a6f3e87acb": [
+    "Conectado como ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ". Você pode continuar navegando ou participar deste bolão quando estiver pronto."
+  ],
+  "4453e4757b4f4cf9": "Atualizando os dados do bolão…",
+  "45364730b756553d": "min",
+  "46893f53c8bd800f": {
+    "c": [
+      {
+        "c": "Previsões",
+        "i": 2,
+        "t": "NavButton"
+      },
+      {
+        "c": "Classificação",
+        "i": 3,
+        "t": "NavButton"
+      }
+    ],
+    "i": 1,
+    "t": "nav"
+  },
+  "469aae33a5a5bc74": "Fechado",
+  "47f1f38a0c8edfff": [
+    "Entre para enviar seus palpites para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "49afa076f2982524": "Ainda não há palpites.",
+  "49e7ca6fc1ecfc58": "jogadores",
+  "4d04bf9a6c45879e": "Convidado",
+  "537b386051c8204c": "horas",
+  "53fa193620953350": "Jogadores",
+  "5599e833dc88e539": "Abrir a URL de um espaço de trabalho",
+  "579e35d0bb5255e5": "Próximos",
+  "5884ac0b75ad8bdf": "Participar do bolão",
+  "60ef184a1d688413": "Precisão",
+  "635cf4862a9b89d9": "venceu",
+  "6ee033205ed5bff5": "Os palpites são bloqueados no início da partida e não podem mais ser alterados.",
+  "76230d7945e51a03": "Disputados",
+  "7853bd9e23f25bb6": "Total",
+  "78a1a02732fc74e8": "Sair",
+  "79afc76852a2982f": "VS",
+  "7ea0ff7a55f46ac0": "Crie uma conta.",
+  "7f71b8e933aee987": "Já tem conta? ",
+  "8450121ebdfa1dae": "Criar conta",
+  "845ba43e0aa91b4f": "Começa em",
+  "8555b83cd7f215c4": "Dê seu palpite no resultado antes do início da partida para ganhar pontos.",
+  "86a50043ca756a01": "Bolão",
+  "8b324ba31d982621": "Entre para enviar seus palpites.",
+  "9099d0df3e0ceef5": "Que bom ver você de volta",
+  "90bf57558437c008": {
+    "c": [
+      {
+        "i": 2,
+        "t": "UserPlus"
+      },
+      "Ainda não faz parte?"
+    ],
+    "i": 1,
+    "t": "div"
+  },
+  "92267e3641701d68": "Pontos",
+  "927cb48154a25f55": "Partidas",
+  "98ad8329b7eb7fe4": "Espaço de trabalho não encontrado",
+  "997879730b235a08": "Participe de um espaço de trabalho para enviar seus palpites e começar a acompanhar sua pontuação.",
+  "9a06fd459ce858b9": "Ao vivo",
+  "a482665efe0bb687": "Previsões",
+  "a913defaad3414ad": "Ainda não há jogadores.",
+  "af7eb4f9c7f0f575": "Filtros",
+  "afc307fd60d5e156": "Palpites",
+  "b2be70822d55f16a": "Aberto",
+  "b50c41465e5408b3": "E-mail",
+  "b6e27ab2537ef874": "Crie uma",
+  "bbe653637f55dfe4": "Mostrar partidas passadas",
+  "c047f54c701ee499": "Incorreto",
+  "c4d652790254d3f2": "Bolão iniciado",
+  "c544b470667f829f": "Sem estatísticas ainda",
+  "cc73d3632b0806e2": "Não tem conta? ",
+  "cdc5fc4d2cdf859b": "dias",
+  "cfb2b0875cb6f217": "Atualiza ao vivo à medida que os resultados das partidas são divulgados.",
+  "d35954604b717007": "Suas estatísticas",
+  "d849d0bc1d9afbde": "Os palpites são fechados quando as partidas começam.",
+  "d9681ac7e4613ff4": "Participar agora",
+  "dbe33dcc7842dccc": [
+    "Crie uma conta para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "e52151684b116f53": {
+    "c": "Participar",
+    "i": 1,
+    "t": "button"
+  },
+  "e851a2ea3914e1a1": "Sem espaço de trabalho",
+  "ec21b232e0eacd4a": "Entrar",
+  "ec53e8ea9fdd198d": "Voltar à classificação",
+  "ed67b5ef4903b974": "Pontuação",
+  "efabe3e18be04271": "Idioma",
+  "fb7900f78343f2d1": "Acertar o resultado da partida rende 3 pontos.",
+  "ffb37ba7ae41476e": "Pontuação"
+}

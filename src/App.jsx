@@ -8,19 +8,15 @@ import {
     ChevronDown,
     CircleHelp,
     CircleDot,
-    Filter,
     Lock,
     LogOut,
     Menu,
     Monitor,
     Moon,
-    Plus,
     Sparkles,
     Sun,
-    Trash2,
     Trophy,
     UserPlus,
-    WifiOff,
     XCircle,
 } from 'lucide-react'
 import {toast} from 'sonner'
@@ -32,9 +28,11 @@ import PlayerAvatar from './components/shared/PlayerAvatar'
 import UserStatsCard from './components/sidebar/UserStatsCard'
 import PoolStatusCard from './components/sidebar/PoolStatusCard'
 import MatchPredictionCard from './components/predictions/MatchPredictionCard'
+import FiltersPopover from './components/predictions/FiltersPopover'
 import LeaderboardPage from './components/leaderboard/LeaderboardPage'
 import PlayerProfilePage from './components/leaderboard/PlayerProfilePage'
 import AuthModal from './components/auth/AuthModal'
+import AdminPage from './components/admin/AdminPage'
 
 pb.autoCancellation(false)
 
@@ -83,8 +81,6 @@ pb.autoCancellation(false)
 // directly instead of a separate players collection.
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'wc-pool-demo-data'
-const PLAYER_KEY = 'wc-pool-player'   // demo mode only
 const THEME_KEY = 'wc-pool-theme'
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '2026'
 
@@ -98,91 +94,7 @@ const STAGE_TABS = [
     {id: 'final', label: 'Final', stage: 'Final'},
 ]
 
-const STAGE_OPTIONS = STAGE_TABS.map(({stage, label}) => [stage, label])
-
-const TEAM_GROUPS = [
-    ['Co-hosts', ['Canada', 'Mexico', 'USA']],
-    ['AFC', ['Australia', 'Iraq', 'IR Iran', 'Japan', 'Jordan', 'Korea Republic', 'Qatar', 'Saudi Arabia', 'Uzbekistan']],
-    ['CAF', ['Algeria', 'Cabo Verde', 'Congo DR', "Côte d'Ivoire", 'Egypt', 'Ghana', 'Morocco', 'Senegal', 'South Africa', 'Tunisia']],
-    ['Concacaf', ['Curaçao', 'Haiti', 'Panama']],
-    ['CONMEBOL', ['Argentina', 'Brazil', 'Colombia', 'Ecuador', 'Paraguay', 'Uruguay']],
-    ['OFC', ['New Zealand']],
-    ['UEFA', ['Austria', 'Belgium', 'Bosnia and Herzegovina', 'Croatia', 'Czechia', 'England', 'France', 'Germany', 'Netherlands', 'Norway', 'Portugal', 'Scotland', 'Spain', 'Sweden', 'Switzerland', 'Türkiye']],
-]
-
-const TEAM_OPTIONS = TEAM_GROUPS.flatMap(([group, teams]) => teams.map((team) => [team, team, group]))
-
-const demoMatches = [
-    {
-        id: 'match-1',
-        stage: 'Group Stage',
-        group: 'Opening Night',
-        home: 'Mexico',
-        away: 'Opening Rival',
-        venue: 'Estadio Azteca',
-        kickoff: '2026-06-11T20:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-    {
-        id: 'match-2',
-        stage: 'Group Stage',
-        group: 'North America',
-        home: 'Canada',
-        away: 'Group Opponent',
-        venue: 'Toronto Stadium',
-        kickoff: '2026-06-12T22:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-    {
-        id: 'match-3',
-        stage: 'Group Stage',
-        group: 'Prime Time',
-        home: 'United States',
-        away: 'Group Opponent',
-        venue: 'Los Angeles Stadium',
-        kickoff: '2026-06-13T01:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-    {
-        id: 'match-4',
-        stage: 'Group Stage',
-        group: 'Favorites',
-        home: 'Argentina',
-        away: 'Qualifier',
-        venue: 'MetLife Stadium',
-        kickoff: '2026-06-14T19:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-    {
-        id: 'match-5',
-        stage: 'Group Stage',
-        group: 'Showcase',
-        home: 'France',
-        away: 'Qualifier',
-        venue: 'Dallas Stadium',
-        kickoff: '2026-06-15T21:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-    {
-        id: 'match-6',
-        stage: 'Round of 32',
-        group: 'Knockout',
-        home: 'Winner A',
-        away: 'Runner-up B',
-        venue: 'Seattle Stadium',
-        kickoff: '2026-06-28T20:00:00.000Z',
-        status: 'scheduled',
-        result: ''
-    },
-]
-
 const emptyData = {players: [], matches: [], predictions: [], leaderboard: []}
-const demoData = {...emptyData, matches: demoMatches}
 const HERO_SURFACE = 'relative overflow-visible border-b border-base-300 bg-base-100 text-base-content'
 const HERO_STYLE = {
     backgroundImage: [
@@ -193,23 +105,6 @@ const HERO_STYLE = {
 }
 const HERO_PATTERN_STYLE = {
     backgroundImage: 'repeating-linear-gradient(135deg, color-mix(in oklch, var(--color-primary) 16%, transparent) 0 1px, transparent 1px 18px)',
-}
-
-// ---------------------------------------------------------------------------
-// Local storage helpers (demo mode only)
-// ---------------------------------------------------------------------------
-function readStoredData() {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return demoData
-    try {
-        return {...demoData, ...JSON.parse(stored)}
-    } catch {
-        return demoData
-    }
-}
-
-function writeStoredData(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
 }
 
 function initialThemePreference() {
@@ -228,9 +123,6 @@ function resolvedTheme(preference, systemTheme) {
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
-function createId(prefix) {
-    return `${prefix}-${crypto.randomUUID()}`
-}
 
 function cleanName(name) {
     return name.trim().replace(/\s+/g, ' ')
@@ -328,13 +220,6 @@ function normalizeLeaderboard(record) {
         accuracy: Number(record.accuracy) || 0,
         rank: Number(record.rank) || 0,
     }
-}
-
-function formatKickoff(value) {
-    return new Intl.DateTimeFormat(undefined, {
-        weekday: 'short', month: 'short', day: 'numeric',
-        hour: 'numeric', minute: '2-digit',
-    }).format(new Date(value))
 }
 
 function kickoffDateKey(value) {
@@ -555,20 +440,6 @@ async function joinWorkspaceForAuth(workspaceId) {
 // ---------------------------------------------------------------------------
 // Score logic
 // ---------------------------------------------------------------------------
-function calculateLeaderboard(players, matches, predictions) {
-    const finals = new Map(matches.filter((m) => m.result).map((m) => [m.id, m]))
-    return players
-        .map((player) => {
-            const pp = predictions.filter((p) => p.player === player.id)
-            const correct = pp.filter((p) => {
-                const m = finals.get(p.match);
-                return m && m.result === p.pick
-            }).length
-            return {...player, points: correct * 3, correct, predictions: pp.length}
-        })
-        .sort((a, b) => b.points - a.points || b.correct - a.correct || b.predictions - a.predictions)
-}
-
 function calculatePlayerStats(player, matches, predictions) {
     if (!player) return {correct: 0, wrong: 0, pending: 0, score: 0}
     const byId = new Map(matches.map((m) => [m.id, m]))
@@ -604,8 +475,7 @@ function calculateCountdown(targetTime, nowTime) {
 function AppContent() {
     const location = useLocation()
     const navigate = useNavigate()
-    const [backend, setBackend] = useState('loading')
-    const [data, setData] = useState(emptyData)
+    const [appLoading, setAppLoading] = useState(true)
     const [player, setPlayer] = useState(null)
     const [authUser, setAuthUser] = useState(null)
     const workspaceName = useMemo(() => workspaceNameFromPath(location.pathname), [location.pathname])
@@ -636,9 +506,6 @@ function AppContent() {
     const [joinError, setJoinError] = useState('')
     const [now, setNow] = useState(() => Date.now())
 
-    // Demo mode name (used when PocketBase is unreachable)
-    const [demoName, setDemoName] = useState('')
-
     const workspaceId = activeWorkspace?.id
     const {
         effectiveData,
@@ -650,9 +517,9 @@ function AppContent() {
         updateMatch: updateMatchRequest,
         deleteMatch: deleteMatchRequest,
     } = useWorkspaceData({
-        backend,
+        backend: 'pocketbase',
         workspaceId,
-        fallbackData: data,
+        fallbackData: emptyData,
         loadWorkspacePlayers,
         loadWorkspaceMatches,
         loadWorkspacePredictions,
@@ -676,10 +543,7 @@ function AppContent() {
         deleteMatchRequest: (matchId) => pb.collection('matches').delete(matchId),
     })
     const matches = useMemo(() => sortMatches(effectiveData.matches), [effectiveData.matches])
-    const leaderboard = useMemo(() => {
-        if (backend === 'pocketbase') return effectiveData.leaderboard
-        return calculateLeaderboard(effectiveData.players, matches, effectiveData.predictions)
-    }, [backend, effectiveData.leaderboard, effectiveData.players, effectiveData.predictions, matches])
+    const leaderboard = useMemo(() => effectiveData.leaderboard, [effectiveData.leaderboard])
     const playerStats = useMemo(
         () => calculatePlayerStats(player, matches, effectiveData.predictions),
         [effectiveData.predictions, matches, player],
@@ -695,7 +559,7 @@ function AppContent() {
     const poolCountdown = poolStartTime ? calculateCountdown(poolStartTime, now) : null
     const adminAllowed = Boolean(player?.isAdmin || ['owner', 'admin'].includes(player?.role) || adminUnlocked)
     const theme = resolvedTheme(themePreference, systemTheme)
-    const canJoinWorkspace = backend === 'pocketbase' && activeWorkspace && authUser && !player
+    const canJoinWorkspace = Boolean(activeWorkspace && authUser && !player)
     const [pageParent] = useAutoAnimate({duration: 180, easing: 'ease-out'})
 
     useEffect(() => {
@@ -719,23 +583,17 @@ function AppContent() {
     }, [])
 
     // ---------------------------------------------------------------------------
-    // Startup: restore session or detect backend
+    // Startup: resolve workspace + restore PocketBase session
     // ---------------------------------------------------------------------------
     useEffect(() => {
         let active = true
 
         async function init() {
-            // 1. Resolve the workspace from /WORKSPACE_NAME, then restore an existing session.
             try {
                 const workspace = await loadWorkspaceByName(workspaceName)
                 if (!active) return
                 setActiveWorkspace(workspace)
-
-                if (!workspace) {
-                    setData(emptyData)
-                    setBackend('pocketbase')
-                    return
-                }
+                if (!workspace) return
 
                 if (pb.authStore.isValid) {
                     try {
@@ -745,7 +603,6 @@ function AppContent() {
                         const resolvedPlayer = await resolvePlayerForAuth(workspace.id)
                         if (!active) return
                         setPlayer(resolvedPlayer)
-                        setBackend('pocketbase')
                         return
                     } catch {
                         pb.authStore.clear()
@@ -753,32 +610,13 @@ function AppContent() {
                         setPlayer(null)
                     }
                 }
-
+            } catch {
                 if (!active) return
-                setBackend('pocketbase')
-            } catch (err) {
-                if (pb.authStore.isValid) {
-                    pb.authStore.clear()
-                }
+                pb.authStore.clear()
                 setAuthUser(null)
                 setPlayer(null)
-                if (!active) return
-                if (err?.status && err.status !== 0) {
-                    // PocketBase returned an HTTP response (e.g. 401/403) — it IS running, just needs auth
-                    setBackend('pocketbase')
-                } else {
-                    // Network error — PocketBase not reachable → demo mode
-                    const localData = readStoredData()
-                    setData(localData)
-                    setBackend('demo')
-                    const saved = localStorage.getItem(PLAYER_KEY)
-                    if (saved) {
-                        try {
-                            setPlayer(JSON.parse(saved))
-                        } catch { /* ignore */
-                        }
-                    }
-                }
+            } finally {
+                if (active) setAppLoading(false)
             }
         }
 
@@ -806,7 +644,6 @@ function AppContent() {
             setAuthUser(resolvedAuthUser)
             setPlayer(resolvedPlayer)
             await refreshWorkspaceData(activeWorkspace.id)
-            setBackend('pocketbase')
             setAuthModal(false)
         } catch (err) {
             setAuthError(friendlyAuthError(err))
@@ -836,7 +673,6 @@ function AppContent() {
             setAuthUser(resolvedAuthUser)
             setPlayer(resolvedPlayer)
             await refreshWorkspaceData(activeWorkspace.id)
-            setBackend('pocketbase')
             setAuthModal(false)
             toast.success(`Welcome, ${authName}!`)
         } catch (err) {
@@ -859,11 +695,8 @@ function AppContent() {
         setJoinModal(false)
         navigate(workspacePath(workspaceName, 'predictions'))
         setAdminUnlocked(false)
-        if (backend === 'pocketbase') {
-            refreshWorkspaceData(activeWorkspace?.id).catch(() => setData(emptyData))
-        } else {
-            setData(readStoredData())
-        }
+        refreshWorkspaceData(activeWorkspace?.id).catch(() => {
+        })
     }
 
     async function joinWorkspace() {
@@ -889,29 +722,8 @@ function AppContent() {
     }
 
     // ---------------------------------------------------------------------------
-    // Demo mode registration (PocketBase unreachable)
+    // PocketBase data mutations
     // ---------------------------------------------------------------------------
-    function registerDemo(event) {
-        event.preventDefault()
-        const trimmed = cleanName(demoName)
-        if (!trimmed) return
-        const nextPlayer = {id: createId('player'), name: trimmed}
-        syncLocal((current) => ({...current, players: [...current.players, nextPlayer]}))
-        setPlayer(nextPlayer)
-        localStorage.setItem(PLAYER_KEY, JSON.stringify(nextPlayer))
-        toast.success(`Welcome, ${trimmed}. Demo mode active — data is stored locally.`)
-    }
-
-    // ---------------------------------------------------------------------------
-    // Data mutations (PocketBase + demo fallback)
-    // ---------------------------------------------------------------------------
-    function syncLocal(updater) {
-        setData((current) => {
-            const next = updater(current)
-            writeStoredData(next)
-            return next
-        })
-    }
 
     async function savePrediction(match, pick) {
         if (isLocked(match)) return
@@ -920,48 +732,32 @@ function AppContent() {
             else openAuth('signup')
             return
         }
-        if (backend === 'pocketbase' && !activeWorkspace) {
+        if (!activeWorkspace) {
             toast.error('Open a valid workspace URL before saving picks.')
             return
         }
         setSavingPick(`${match.id}-${pick}`)
 
         try {
-            if (backend === 'pocketbase') {
-                await savePredictionRequest({
-                    workspaceId: activeWorkspace.id,
-                    playerId: player.id,
-                    matchId: match.id,
-                    pick,
-                })
-                toast.success(`Saved: ${pickLabel(match, pick)} — ${match.home} vs ${match.away}`)
-                return
-            }
+            await savePredictionRequest({
+                workspaceId: activeWorkspace.id,
+                playerId: player.id,
+                matchId: match.id,
+                pick,
+            })
+            toast.success(`Saved: ${pickLabel(match, pick)} — ${match.home} vs ${match.away}`)
         } catch {
-            // fall through to local
+            toast.error('Could not save your pick. Please try again.')
         } finally {
             setSavingPick('')
         }
-
-        syncLocal((current) => {
-            const existing = current.predictions.find((p) => p.player === player.id && p.match === match.id)
-            const predictions = existing
-                ? current.predictions.map((p) => p.id === existing.id ? {...p, pick} : p)
-                : [...current.predictions, {id: createId('prediction'), player: player.id, match: match.id, pick}]
-            return {...current, predictions}
-        })
-        toast.success(`Saved: ${pickLabel(match, pick)} — ${match.home} vs ${match.away}`)
     }
 
     async function addMatch(event) {
         event.preventDefault()
         const match = {...newMatch, kickoff: new Date(newMatch.kickoff).toISOString(), status: 'scheduled', result: ''}
         try {
-            if (backend === 'pocketbase') {
-                await createMatchRequest(match)
-            } else {
-                syncLocal((c) => ({...c, matches: [...c.matches, {...match, id: createId('match')}]}))
-            }
+            await createMatchRequest(match)
             setNewMatch((c) => ({...c, home: '', away: '', venue: '', group: ''}))
             toast.success('Match added.')
         } catch {
@@ -971,11 +767,7 @@ function AppContent() {
 
     async function updateMatch(match, patch) {
         try {
-            if (backend === 'pocketbase') {
-                await updateMatchRequest({matchId: match.id, patch})
-            } else {
-                syncLocal((c) => ({...c, matches: c.matches.map((m) => m.id === match.id ? {...m, ...patch} : m)}))
-            }
+            await updateMatchRequest({matchId: match.id, patch})
             toast.success('Match updated.')
         } catch {
             toast.error('Could not update the match. Check PocketBase admin rules.')
@@ -984,15 +776,7 @@ function AppContent() {
 
     async function deleteMatch(match) {
         try {
-            if (backend === 'pocketbase') {
-                await deleteMatchRequest(match.id)
-            } else {
-                syncLocal((c) => ({
-                    ...c,
-                    matches: c.matches.filter((m) => m.id !== match.id),
-                    predictions: c.predictions.filter((p) => p.match !== match.id),
-                }))
-            }
+            await deleteMatchRequest(match.id)
             toast.success('Match deleted.')
         } catch {
             toast.error('Could not delete the match. Check PocketBase admin rules.')
@@ -1011,7 +795,7 @@ function AppContent() {
     // Render
     // ---------------------------------------------------------------------------
     // Loading state — waiting to know if PocketBase is reachable
-    if (backend === 'loading') {
+    if (appLoading) {
         return (
             <div className={`flex min-h-screen flex-col items-center justify-center ${HERO_SURFACE}`}
                  style={HERO_STYLE} data-theme={theme}>
@@ -1027,74 +811,71 @@ function AppContent() {
     // Main app — always shown (guests can browse; auth modal appears on demand)
     return (
         <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
-                {/* Auth modal */}
-                <AuthModal
-                    open={authModal}
-                    onClose={() => setAuthModal(false)}
-                    view={authView}
-                    onViewChange={(nextView) => {
-                        setAuthView(nextView)
-                        setAuthError('')
+            {/* Auth modal */}
+            <AuthModal
+                open={authModal}
+                onClose={() => setAuthModal(false)}
+                view={authView}
+                onViewChange={(nextView) => {
+                    setAuthView(nextView)
+                    setAuthError('')
+                }}
+                name={authName}
+                setName={setAuthName}
+                email={authEmail}
+                setEmail={setAuthEmail}
+                password={authPassword}
+                setPassword={setAuthPassword}
+                workspaceName={activeWorkspace?.name}
+                error={authError}
+                loading={authLoading}
+                onLogin={handleLogin}
+                onSignup={handleSignup}
+            />
+            {joinModal && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setJoinModal(false)
                     }}
-                    name={authName}
-                    setName={setAuthName}
-                    email={authEmail}
-                    setEmail={setAuthEmail}
-                    password={authPassword}
-                    setPassword={setAuthPassword}
-                    workspaceName={activeWorkspace?.name}
-                    error={authError}
-                    loading={authLoading}
-                    onLogin={handleLogin}
-                    onSignup={handleSignup}
-                />
-                {joinModal && (
-                    <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-                        onClick={(e) => {
-                            if (e.target === e.currentTarget) setJoinModal(false)
-                        }}
-                    >
-                        <JoinWorkspaceModal
-                            workspaceName={activeWorkspace?.name}
-                            userName={authUser?.name}
-                            error={joinError}
-                            loading={joinLoading}
-                            onJoin={joinWorkspace}
-                            onClose={() => setJoinModal(false)}
+                >
+                    <JoinWorkspaceModal
+                        workspaceName={activeWorkspace?.name}
+                        userName={authUser?.name}
+                        error={joinError}
+                        loading={joinLoading}
+                        onJoin={joinWorkspace}
+                        onClose={() => setJoinModal(false)}
+                    />
+                </div>
+            )}
+            {/* Header */}
+            <header className={HERO_SURFACE} style={HERO_STYLE}>
+                <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
+                <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+                    <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                            <div
+                                className="truncate text-xs font-semibold uppercase tracking-widest text-base-content/55">
+                                {activeWorkspace?.name || workspaceName || 'Prediction Pool'}
+                            </div>
+                            <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">
+                                World Cup 2026
+                            </h1>
+                        </div>
+                        <HeaderUserMenu
+                            player={player || authUser}
+                            workspace={activeWorkspace}
+                            themePreference={themePreference}
+                            onThemeChange={changeThemePreference}
+                            onLogin={() => openAuth('login')}
+                            onSignup={() => openAuth('signup')}
+                            onLogout={logout}
                         />
                     </div>
-                )}
-                {/* Header */}
-                <header className={HERO_SURFACE} style={HERO_STYLE}>
-                    <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
-                    <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                                <div
-                                    className="truncate text-xs font-semibold uppercase tracking-widest text-base-content/55">
-                                    {activeWorkspace?.name || workspaceName || 'Prediction Pool'}
-                                </div>
-                                <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">
-                                    World Cup 2026
-                                </h1>
-                            </div>
-                            <HeaderUserMenu
-                                backend={backend}
-                                player={player || authUser}
-                                workspace={activeWorkspace}
-                                themePreference={themePreference}
-                                onThemeChange={changeThemePreference}
-                                onLogin={() => openAuth('login')}
-                                onSignup={() => openAuth('signup')}
-                                onLogout={backend === 'pocketbase' ? logout : () => {
-                                    localStorage.removeItem(PLAYER_KEY)
-                                    setPlayer(null)
-                                }}
-                            />
-                        </div>
 
-                        <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <T>
                             <nav className="flex flex-wrap gap-1">
                                 <NavButton active={activePage === 'predictions'}
                                            onClick={() => navigate(workspacePath(workspaceName, 'predictions'))}
@@ -1105,102 +886,98 @@ function AppContent() {
                                 {/*<NavButton ctive={activePage === 'admin'}
                   onClick={() => setActivePage('admin')} icon={Settings}>Admin</NavButton>*/}
                             </nav>
-                        </div>
+                        </T>
                     </div>
-                </header>
+                </div>
+            </header>
 
-                <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-3 lg:px-8">
-                    <section ref={pageParent} className="min-w-0 lg:col-span-2">
-                        {backend === 'pocketbase' && activeWorkspace && pocketbaseQueryError && (
-                            <Panel className="mb-5 border border-error/30">
-                                <p className="text-sm font-semibold text-error">
-                                    {friendlyAuthError(pocketbaseQueryError)}
-                                </p>
-                            </Panel>
-                        )}
+            <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-3 lg:px-8">
+                <section ref={pageParent} className="min-w-0 lg:col-span-2">
+                    {activeWorkspace && pocketbaseQueryError && (
+                        <Panel className="mb-5 border border-error/30">
+                            <p className="text-sm font-semibold text-error">
+                                {friendlyAuthError(pocketbaseQueryError)}
+                            </p>
+                        </Panel>
+                    )}
 
-                        {backend === 'pocketbase' && activeWorkspace && pocketbaseQueryLoading && !pocketbaseQueryError && (
-                            <Panel className="mb-5">
-                                <p className="text-sm font-semibold text-base-content/55"><T>Refreshing pool data…</T></p>
-                            </Panel>
-                        )}
+                    {activeWorkspace && pocketbaseQueryLoading && !pocketbaseQueryError && (
+                        <Panel className="mb-5">
+                            <p className="text-sm font-semibold text-base-content/55"><T>Refreshing pool data…</T></p>
+                        </Panel>
+                    )}
 
-                        {/* Demo mode: show name registration if no player yet */}
-                        {backend === 'demo' && !player && (
-                            <DemoRegistrationCard name={demoName} setName={setDemoName} onSubmit={registerDemo}/>
-                        )}
+                    {!activeWorkspace && (
+                        <MissingWorkspaceCard workspaceName={workspaceName}/>
+                    )}
 
-                        {backend === 'pocketbase' && !activeWorkspace && (
-                            <MissingWorkspaceCard workspaceName={workspaceName}/>
-                        )}
+                    {canJoinWorkspace && (
+                        <JoinWorkspaceCard
+                            workspaceName={activeWorkspace.name}
+                            userName={authUser.name}
+                            onJoin={openJoinModal}
+                        />
+                    )}
 
-                        {canJoinWorkspace && (
-                            <JoinWorkspaceCard
-                                workspaceName={activeWorkspace.name}
-                                userName={authUser.name}
-                                onJoin={openJoinModal}
-                            />
-                        )}
-
-                        {(backend === 'demo' || activeWorkspace) && activePage === 'predictions' && (
-                            <PredictionsPage
+                    {activeWorkspace && activePage === 'predictions' && (
+                        <PredictionsPage
+                            matches={matches}
+                            playerPredictions={playerPredictions}
+                            nowTime={now}
+                            savingPick={savingPick} onPick={savePrediction}
+                            onShowAuth={!authUser ? () => openAuth('signup') : null}
+                            onShowJoin={canJoinWorkspace ? openJoinModal : null}
+                        />
+                    )}
+                    {activeWorkspace && activePage === 'leaderboard' && (
+                        profilePlayerId ? (
+                            <PlayerProfilePage
+                                playerId={profilePlayerId}
+                                leaderboard={leaderboard}
                                 matches={matches}
-                                playerPredictions={playerPredictions}
-                                nowTime={now}
-                                savingPick={savingPick} onPick={savePrediction}
-                                onShowAuth={backend === 'pocketbase' && !authUser ? () => openAuth('signup') : null}
-                                onShowJoin={canJoinWorkspace ? openJoinModal : null}
+                                predictions={effectiveData.predictions}
+                                onBack={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
                             />
-                        )}
-                        {(backend === 'demo' || activeWorkspace) && activePage === 'leaderboard' && (
-                            profilePlayerId ? (
-                                <PlayerProfilePage
-                                    playerId={profilePlayerId}
-                                    leaderboard={leaderboard}
-                                    matches={matches}
-                                    predictions={effectiveData.predictions}
-                                    onBack={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
-                                />
-                            ) : (
-                                <LeaderboardPage
-                                    leaderboard={leaderboard}
-                                    matches={matches}
-                                    predictions={effectiveData.predictions}
-                                    onOpenProfile={(selectedPlayerId) => {
-                                        navigate(leaderboardProfilePath(workspaceName, selectedPlayerId))
-                                    }}
-                                />
-                            )
-                        )}
-                        {activePage === 'admin' && (
-                            <AdminPage
-                                adminPin={adminPin} adminUnlocked={adminAllowed}
-                                setAdminPin={setAdminPin} unlockAdmin={unlockAdmin}
-                                backend={backend} newMatch={newMatch} setNewMatch={setNewMatch}
-                                addMatch={addMatch} matches={matches} updateMatch={updateMatch}
-                                deleteMatch={deleteMatch}
+                        ) : (
+                            <LeaderboardPage
+                                leaderboard={leaderboard}
+                                matches={matches}
+                                predictions={effectiveData.predictions}
+                                onOpenProfile={(selectedPlayerId) => {
+                                    navigate(leaderboardProfilePath(workspaceName, selectedPlayerId))
+                                }}
                             />
-                        )}
-                    </section>
-
-                    <aside className="space-y-4">
-                        <UserStatsCard
-                            player={player}
-                            authUser={authUser}
-                            stats={playerStats}
-                            workspaceName={activeWorkspace?.name}
-                            onJoin={backend === 'pocketbase' && activeWorkspace ? (authUser ? openJoinModal : () => openAuth('signup')) : null}
+                        )
+                    )}
+                    {activePage === 'admin' && (
+                        <AdminPage
+                            adminPin={adminPin} adminUnlocked={adminAllowed}
+                            setAdminPin={setAdminPin} unlockAdmin={unlockAdmin}
+                            newMatch={newMatch} setNewMatch={setNewMatch}
+                            addMatch={addMatch} matches={matches} updateMatch={updateMatch}
+                            deleteMatch={deleteMatch}
                         />
+                    )}
+                </section>
 
-                        <PoolStatusCard
-                            playersCount={effectiveData.players.length}
-                            matchesCount={matches.length}
-                            completedMatches={completedMatches}
-                            totalPredictions={effectiveData.predictions.length}
-                            countdown={poolCountdown}
-                        />
-                    </aside>
-                </main>
+                <aside className="space-y-4">
+                    <UserStatsCard
+                        player={player}
+                        authUser={authUser}
+                        stats={playerStats}
+                        workspaceName={activeWorkspace?.name}
+                        onJoin={activeWorkspace ? (authUser ? openJoinModal : () => openAuth('signup')) : null}
+                    />
+
+                    <PoolStatusCard
+                        playersCount={effectiveData.players.length}
+                        matchesCount={matches.length}
+                        completedMatches={completedMatches}
+                        totalPredictions={effectiveData.predictions.length}
+                        countdown={poolCountdown}
+                    />
+                </aside>
+            </main>
         </div>
     )
 }
@@ -1269,7 +1046,7 @@ function NavButton({active, onClick, icon: Icon, children}) {
     )
 }
 
-function HeaderUserMenu({backend, player, workspace, themePreference, onThemeChange, onLogin, onSignup, onLogout}) {
+function HeaderUserMenu({player, workspace, themePreference, onThemeChange, onLogin, onSignup, onLogout}) {
     const [menuParent] = useAutoAnimate({duration: 160, easing: 'ease-out'})
     const [menuOpen, setMenuOpen] = useState(false)
     const menuRef = useRef(null)
@@ -1325,11 +1102,9 @@ function HeaderUserMenu({backend, player, workspace, themePreference, onThemeCha
                     className="menu absolute right-0 top-full z-50 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
                     role="menu"
                 >
-                    {backend === 'pocketbase' && (
-                        <li className="menu-title">
-                            <span className="truncate">{workspace?.name || <T>No workspace</T>}</span>
-                        </li>
-                    )}
+                    <li className="menu-title">
+                        <span className="truncate">{workspace?.name || <T>No workspace</T>}</span>
+                    </li>
                     <li className="menu-title">
                         <span className="truncate">{player?.name || <T>Guest</T>}</span>
                     </li>
@@ -1364,7 +1139,7 @@ function HeaderUserMenu({backend, player, workspace, themePreference, onThemeCha
                             <LocaleSelector/>
                         </div>
                     </li>
-                    {backend === 'pocketbase' && !player ? (
+                    {!player ? (
                         <>
                             <li>
                                 <button type="button" onClick={() => {
@@ -1386,7 +1161,7 @@ function HeaderUserMenu({backend, player, workspace, themePreference, onThemeCha
                                 onLogout()
                             }}>
                                 <LogOut size={16}/>
-                                {backend === 'pocketbase' ? <T>Sign out</T> : <T>Switch player</T>}
+                                <T>Sign out</T>
                             </button>
                         </li>
                     )}
@@ -1396,46 +1171,18 @@ function HeaderUserMenu({backend, player, workspace, themePreference, onThemeCha
     )
 }
 
-// Demo-mode only registration card
-function DemoRegistrationCard({name, setName, onSubmit}) {
-    return (
-        <Panel className="mb-5">
-            <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-warning">
-                <WifiOff size={13}/>
-                Demo mode — PocketBase not reachable
-            </div>
-            <form className="mt-3 flex flex-col gap-3 sm:flex-row" onSubmit={onSubmit}>
-                <label className="flex-1">
-          <span className="mb-1.5 flex items-center gap-1.5 text-sm font-bold">
-            <UserPlus size={15}/>
-            Join the pool — enter your name
-          </span>
-                    <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="input input-bordered w-full rounded-xl font-semibold"
-                        placeholder="Your name"
-                        maxLength={48}
-                    />
-                </label>
-                <button type="submit" className="btn btn-primary self-end rounded-xl font-black">
-                    Start picking
-                </button>
-            </form>
-        </Panel>
-    )
-}
-
 function JoinWorkspaceCard({workspaceName, userName, onJoin}) {
     return (
         <Panel className="mb-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <div
-                        className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
-                        <UserPlus size={13}/>
-                        Not a member yet
-                    </div>
+                    <T>
+                        <div
+                            className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+                            <UserPlus size={13}/>
+                            Not a member yet
+                        </div>
+                    </T>
                     <h3 className="text-lg font-black">
                         <T context="Sports prediction pool app">
                             Join <Var>{workspaceName}</Var> to submit picks
@@ -1443,13 +1190,16 @@ function JoinWorkspaceCard({workspaceName, userName, onJoin}) {
                     </h3>
                     <p className="mt-1 text-sm text-base-content/55">
                         <T context="Sports prediction pool app">
-                            Signed in as <Var>{userName || 'a user'}</Var>. You can keep browsing, or join this pool when you are ready.
+                            Signed in as <Var>{userName || 'a user'}</Var>. You can keep browsing, or join this pool
+                            when you are ready.
                         </T>
                     </p>
                 </div>
-                <button type="button" className="btn btn-primary rounded-xl font-black" onClick={onJoin}>
-                    Join pool
-                </button>
+                <T>
+                    <button type="button" className="btn btn-primary rounded-xl font-black" onClick={onJoin}>
+                        Join
+                    </button>
+                </T>
             </div>
         </Panel>
     )
@@ -1485,7 +1235,6 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
     const [scoringOpen, setScoringOpen] = useState(false)
     const [filtersOpen, setFiltersOpen] = useState(false)
     const scoringRef = useRef(null)
-    const filtersRef = useRef(null)
     const [matchesParent] = useAutoAnimate({duration: 220, easing: 'ease-out'})
     const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
     const collapseScope = useMemo(
@@ -1537,21 +1286,19 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
     }, [groupMode, inferredRounds, visibleMatches])
 
     useEffect(() => {
-        if (!scoringOpen && !filtersOpen) return undefined
+        if (!scoringOpen) return undefined
 
         function closeOnOutsidePointer(event) {
             const target = event.target
-            if (scoringRef.current?.contains(target) || filtersRef.current?.contains(target)) {
+            if (scoringRef.current?.contains(target)) {
                 return
             }
             setScoringOpen(false)
-            setFiltersOpen(false)
         }
 
         function closeOnEscape(event) {
             if (event.key === 'Escape') {
                 setScoringOpen(false)
-                setFiltersOpen(false)
             }
         }
 
@@ -1563,7 +1310,7 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
             document.removeEventListener('touchstart', closeOnOutsidePointer)
             document.removeEventListener('keydown', closeOnEscape)
         }
-    }, [filtersOpen, scoringOpen])
+    }, [scoringOpen])
 
     function toggleGroup(groupKey) {
         const scopedKey = `${collapseScope}:${groupKey}`
@@ -1614,61 +1361,19 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                             </div>
                         )}
                     </div>
-                    <div ref={filtersRef} className="dropdown dropdown-end shrink-0">
-                        <button
-                            type="button"
-                            className="btn btn-soft btn-sm rounded-xl"
-                            onClick={() => {
-                                setFiltersOpen((open) => !open)
-                                setScoringOpen(false)
-                            }}
-                            aria-expanded={filtersOpen}
-                            aria-haspopup="menu"
-                        >
-                            <T>Filters</T>
-                            <Filter size={16}/>
-                        </button>
-                        {filtersOpen && (
-                            <div
-                                className="dropdown-content z-20 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl">
-                                <div className="space-y-2">
-                                    <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-sm"
-                                            checked={showPastMatches}
-                                            onChange={(event) => setShowPastMatches(event.target.checked)}
-                                        />
-                                        <span className="text-sm font-semibold"><T>Show past matches</T></span>
-                                    </label>
-                                    <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
-                                        <input
-                                            type="checkbox"
-                                            className="checkbox checkbox-sm"
-                                            checked={showPredictedMatches}
-                                            onChange={(event) => setShowPredictedMatches(event.target.checked)}
-                                        />
-                                        <span className="text-sm font-semibold"><T>Show predicted matches</T></span>
-                                    </label>
-                                    <div className="px-2 py-1.5">
-                                        <div
-                                            className="mb-1 text-xs font-bold uppercase tracking-wide text-base-content/45">
-                                            <T>Grouping</T></div>
-                                        <select
-                                            className="select select-bordered select-sm w-full text-sm font-semibold"
-                                            value={groupMode}
-                                            onChange={(event) => setGroupMode(event.target.value)}
-                                        >
-                                            <option value="date">By date</option>
-                                            <option value="round">By round</option>
-                                            <option value="group">By group</option>
-                                            <option value="none">No grouping</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <FiltersPopover
+                        open={filtersOpen}
+                        onOpenChange={(nextOpen) => {
+                            setFiltersOpen(nextOpen)
+                            if (nextOpen) setScoringOpen(false)
+                        }}
+                        showPastMatches={showPastMatches}
+                        onShowPastMatchesChange={setShowPastMatches}
+                        showPredictedMatches={showPredictedMatches}
+                        onShowPredictedMatchesChange={setShowPredictedMatches}
+                        groupMode={groupMode}
+                        onGroupModeChange={setGroupMode}
+                    />
                 </div>
             </div>
 
@@ -1695,9 +1400,12 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                                 className="flex w-full cursor-pointer items-center gap-2 px-1 py-1"
                             >
                                 <div className="h-px flex-1 bg-base-300"/>
-                                <div className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
-                                    {group.label} · {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
-                                </div>
+                                <T>
+                                    <div
+                                        className="shrink-0 text-xs font-bold uppercase tracking-wide text-base-content/45">
+                                        {group.label} · {group.matches.length} {group.matches.length === 1 ? 'match' : 'matches'}
+                                    </div>
+                                </T>
                                 <ChevronDown
                                     size={14}
                                     className={`shrink-0 text-base-content/35 transition-transform duration-200 ${
@@ -1775,238 +1483,6 @@ function StageTabs({activeStage, matches, onChange}) {
                 )
             })}
         </div>
-    )
-}
-
-// ===========================================================================
-// Admin
-// ===========================================================================
-function AdminPage({
-                       adminPin,
-                       adminUnlocked,
-                       setAdminPin,
-                       unlockAdmin,
-                       backend,
-                       newMatch,
-                       setNewMatch,
-                       addMatch,
-                       matches,
-                       updateMatch,
-                       deleteMatch
-                   }) {
-    const [fixturesParent] = useAutoAnimate({duration: 200, easing: 'ease-out'})
-
-    if (!adminUnlocked) {
-        return (
-            <Panel>
-                <form className="max-w-sm space-y-4" onSubmit={unlockAdmin}>
-                    <div>
-                        <h2 className="text-2xl font-black">Admin</h2>
-                        <p className="mt-1 text-sm text-base-content/60">Enter the pool PIN to manage fixtures and
-                            results.</p>
-                    </div>
-                    <input
-                        value={adminPin}
-                        onChange={(e) => setAdminPin(e.target.value)}
-                        className="input input-bordered w-full rounded-xl font-semibold"
-                        placeholder="Admin PIN"
-                        type="password"
-                    />
-                    <button className="btn btn-neutral rounded-xl font-black" type="submit">Unlock</button>
-                </form>
-            </Panel>
-        )
-    }
-
-    return (
-        <div className="space-y-4">
-            <div>
-                <h2 className="text-2xl font-black sm:text-3xl">Admin</h2>
-                <p className="mt-0.5 text-sm text-base-content/60">Add fixtures, edit details, and publish results.</p>
-            </div>
-
-            <Panel>
-                <h3 className="mb-3 font-black">Add match</h3>
-                <form className="grid gap-3 md:grid-cols-2" onSubmit={addMatch}>
-                    <AdminSelect label="Stage" value={newMatch.stage}
-                                 onChange={(v) => setNewMatch({...newMatch, stage: v})} options={STAGE_OPTIONS}/>
-                    <AdminInput label="Group" value={newMatch.group}
-                                onChange={(v) => setNewMatch({...newMatch, group: v})}/>
-                    <AdminSelect label="Home" value={newMatch.home}
-                                 onChange={(v) => setNewMatch({...newMatch, home: v})} options={TEAM_OPTIONS}
-                                 placeholder="Select home team" required/>
-                    <AdminSelect label="Away" value={newMatch.away}
-                                 onChange={(v) => setNewMatch({...newMatch, away: v})} options={TEAM_OPTIONS}
-                                 placeholder="Select away team" required/>
-                    <AdminInput label="Venue" value={newMatch.venue}
-                                onChange={(v) => setNewMatch({...newMatch, venue: v})}/>
-                    <label className="form-control">
-            <span className="label p-0 pb-1">
-              <span
-                  className="label-text text-xs font-black uppercase tracking-wide text-base-content/50">Kickoff</span>
-            </span>
-                        <input
-                            type="datetime-local"
-                            value={newMatch.kickoff}
-                            onChange={(e) => setNewMatch({...newMatch, kickoff: e.target.value})}
-                            className="input input-bordered w-full rounded-xl font-semibold"
-                            required
-                        />
-                    </label>
-                    <button type="submit" className="btn btn-primary gap-2 rounded-xl font-black md:col-span-2">
-                        <Plus size={18}/>Add match
-                    </button>
-                </form>
-            </Panel>
-
-            <Panel>
-                <div className="mb-3 flex items-center justify-between">
-                    <h3 className="font-black">Fixtures</h3>
-                    <span
-                        className="rounded-full border border-base-300 bg-base-200 px-2 py-1 text-xs font-semibold text-base-content/50">{backend} mode</span>
-                </div>
-                <div ref={fixturesParent} className="space-y-2">
-                    {matches.map((match) => (
-                        <MatchAdminCard
-                            key={match.id}
-                            match={match}
-                            updateMatch={updateMatch}
-                            deleteMatch={deleteMatch}
-                        />
-                    ))}
-                </div>
-            </Panel>
-        </div>
-    )
-}
-
-function editableMatchDraft(match) {
-    return {
-        stage: match.stage,
-        group: match.group,
-        home: match.home,
-        away: match.away,
-        venue: match.venue,
-        kickoff: formatForInput(match.kickoff),
-        status: match.status,
-        result: match.result,
-    }
-}
-
-function MatchAdminCard({match, updateMatch, deleteMatch}) {
-    const [draft, setDraft] = useState(() => editableMatchDraft(match))
-
-    function setDraftField(field, value) {
-        setDraft((current) => ({...current, [field]: value}))
-    }
-
-    function saveField(field, value) {
-        const current = field === 'kickoff' ? formatForInput(match.kickoff) : match[field]
-        if (value === current) return
-        updateMatch(match, {[field]: field === 'kickoff' ? new Date(value).toISOString() : value})
-    }
-
-    function saveSelect(field, value, extraPatch = {}) {
-        setDraft((current) => ({...current, [field]: value, ...extraPatch}))
-        updateMatch(match, {[field]: value, ...extraPatch})
-    }
-
-    return (
-        <div className="rounded-xl border border-base-200 bg-base-200/50 p-3">
-            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                    <div className="font-black">{draft.home || 'Home'} vs {draft.away || 'Away'}</div>
-                    <div className="text-xs text-base-content/50">{formatKickoff(match.kickoff)}</div>
-                </div>
-                <button
-                    type="button"
-                    className="btn btn-error btn-sm gap-2 rounded-xl font-black"
-                    onClick={() => deleteMatch(match)}
-                >
-                    <Trash2 size={16}/>Delete
-                </button>
-            </div>
-
-            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-                <AdminSelect label="Stage" value={draft.stage} onChange={(v) => saveSelect('stage', v)}
-                             options={STAGE_OPTIONS}/>
-                <AdminInput label="Group" value={draft.group} onChange={(v) => setDraftField('group', v)}
-                            onBlur={() => saveField('group', draft.group)}/>
-                <AdminSelect label="Home" value={draft.home} onChange={(v) => saveSelect('home', v)}
-                             options={TEAM_OPTIONS} placeholder="Select home team" required/>
-                <AdminSelect label="Away" value={draft.away} onChange={(v) => saveSelect('away', v)}
-                             options={TEAM_OPTIONS} placeholder="Select away team" required/>
-                <AdminInput label="Venue" value={draft.venue} onChange={(v) => setDraftField('venue', v)}
-                            onBlur={() => saveField('venue', draft.venue)}/>
-                <AdminInput label="Kickoff" type="datetime-local" value={draft.kickoff}
-                            onChange={(v) => setDraftField('kickoff', v)}
-                            onBlur={() => saveField('kickoff', draft.kickoff)} required/>
-                <AdminSelect label="Status" value={draft.status} onChange={(v) => saveSelect('status', v)}
-                             options={[['scheduled', 'Scheduled'], ['live', 'Live'], ['final', 'Final']]}/>
-                <AdminSelect
-                    label="Result"
-                    value={draft.result}
-                    onChange={(v) => saveSelect('result', v, v ? {status: 'final'} : {})}
-                    options={[['', 'None'], ['home', draft.home || match.home], ['draw', 'Draw'], ['away', draft.away || match.away]]}
-                />
-            </div>
-        </div>
-    )
-}
-
-function AdminInput({label, value, onChange, required = false, type = 'text', onBlur}) {
-    return (
-        <label className="form-control">
-      <span className="label p-0 pb-1">
-        <span className="label-text text-xs font-black uppercase tracking-wide text-base-content/50">{label}</span>
-      </span>
-            <input
-                type={type}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                onBlur={onBlur}
-                className="input input-bordered w-full rounded-xl font-semibold"
-                required={required}
-            />
-        </label>
-    )
-}
-
-function groupOptions(options) {
-    return options.reduce((groups, [value, label, group]) => {
-        const groupName = group || ''
-        if (!groups.has(groupName)) groups.set(groupName, [])
-        groups.get(groupName).push([value, label])
-        return groups
-    }, new Map())
-}
-
-function AdminSelect({label, value, onChange, options, placeholder = '', required = false}) {
-    const groupedOptions = groupOptions(options)
-
-    return (
-        <label className="form-control">
-      <span className="label p-0 pb-1">
-        <span className="label-text text-xs font-black uppercase tracking-wide text-base-content/50">{label}</span>
-      </span>
-            <select
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="select select-bordered w-full rounded-xl text-sm font-bold"
-                required={required}
-            >
-                {placeholder && <option value="">{placeholder}</option>}
-                {[...groupedOptions.entries()].map(([group, items]) => (
-                    group
-                        ? (
-                            <optgroup key={group} label={group}>
-                                {items.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                            </optgroup>
-                        )
-                        : items.map(([v, l]) => <option key={v} value={v}>{l}</option>)
-                ))}
-            </select>
-        </label>
     )
 }
 

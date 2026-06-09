@@ -3,7 +3,11 @@
   "locales": [
     "es",
     "fr",
-    "pt"
+    "pt",
+    "de",
+    "it",
+    "ja",
+    "ko",
   ],
   "files": {
     "gt": {
