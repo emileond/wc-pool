@@ -407,6 +407,16 @@ function calculatePlayerStats(player, matches, predictions) {
   return { correct, wrong, pending, score: correct * 3 }
 }
 
+function calculateCountdown(targetTime, nowTime) {
+  const remaining = Math.max(0, targetTime - nowTime)
+  const totalSeconds = Math.floor(remaining / 1000)
+  const days = Math.floor(totalSeconds / 86400)
+  const hours = Math.floor((totalSeconds % 86400) / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return { days, hours, minutes, seconds, isStarted: remaining === 0 }
+}
+
 // ===========================================================================
 // App
 // ===========================================================================
@@ -439,6 +449,7 @@ function App() {
   const [joinModal,    setJoinModal]    = useState(false)
   const [joinLoading,  setJoinLoading]  = useState(false)
   const [joinError,    setJoinError]    = useState('')
+  const [now,          setNow]          = useState(() => Date.now())
 
   // Demo mode name (used when PocketBase is unreachable)
   const [demoName, setDemoName] = useState('')
@@ -456,6 +467,8 @@ function App() {
     )
   }, [data.predictions, player])
   const completedMatches = matches.filter((m) => m.result).length
+  const poolStartTime = matches.length ? new Date(matches[0].kickoff).getTime() : null
+  const poolCountdown = poolStartTime ? calculateCountdown(poolStartTime, now) : null
   const adminAllowed = Boolean(player?.isAdmin || ['owner', 'admin'].includes(player?.role) || adminUnlocked)
   const theme = resolvedTheme(themePreference, systemTheme)
   const canJoinWorkspace = backend === 'pocketbase' && activeWorkspace && authUser && !player
@@ -475,6 +488,11 @@ function App() {
     setThemePreference(preference)
     localStorage.setItem(THEME_KEY, preference)
   }
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(interval)
+  }, [])
 
   // ---------------------------------------------------------------------------
   // Startup: restore session or detect backend
@@ -931,6 +949,7 @@ function App() {
                 </div>
               ))}
             </div>
+            <PoolCountdown countdown={poolCountdown} />
           </Panel>
         </aside>
       </main>
@@ -1265,6 +1284,49 @@ function UserStatsCard({ player, authUser, stats, workspaceName, onJoin }) {
         <StatTile icon={Trophy}       label="Score"   value={stats.score}   tone="primary" />
       </div>
     </Panel>
+  )
+}
+
+function PoolCountdown({ countdown }) {
+  if (!countdown) {
+    return (
+      <div className="mt-4 rounded-xl border border-base-300 bg-base-200/50 p-4 text-center">
+        <p className="text-xs font-bold uppercase tracking-wide text-base-content/40">Pool starts</p>
+        <p className="mt-1 text-sm font-semibold text-base-content/55">Waiting for fixtures</p>
+      </div>
+    )
+  }
+
+  if (countdown.isStarted) {
+    return (
+      <div className="mt-4 rounded-xl border border-primary/20 bg-primary/10 p-4 text-center">
+        <p className="text-xs font-bold uppercase tracking-wide text-primary">Pool started</p>
+        <p className="mt-1 text-sm font-semibold text-base-content/60">Picks are locked as matches begin.</p>
+      </div>
+    )
+  }
+
+  const units = [
+    ['days', countdown.days],
+    ['hours', countdown.hours],
+    ['min', countdown.minutes],
+    ['sec', countdown.seconds],
+  ]
+
+  return (
+    <div className="mt-4 rounded-xl border border-base-300 bg-base-200/50 p-4">
+      <p className="mb-3 text-center text-xs font-bold uppercase tracking-wide text-base-content/40">Pool starts in</p>
+      <div className="grid grid-cols-4 gap-2 text-center">
+        {units.map(([label, value]) => (
+          <div key={label} className="flex min-w-0 flex-col items-center">
+            <span className="countdown font-mono text-2xl font-black text-base-content sm:text-3xl">
+              <span style={{ '--value': value }} aria-live="polite" aria-label={String(value)}>{value}</span>
+            </span>
+            <span className="mt-1 text-[10px] font-bold uppercase tracking-wide text-base-content/45">{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
