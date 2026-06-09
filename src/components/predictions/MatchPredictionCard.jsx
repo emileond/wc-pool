@@ -8,11 +8,11 @@ function formatKickoff(value) {
     }).format(new Date(value))
 }
 
-function pickLabel(match, pick) {
+// Helper to extract raw team names cleanly for our UI layout blocks
+function getPickTeamName(match, pick) {
     if (pick === 'home') return match.home
     if (pick === 'away') return match.away
-    if (pick === 'draw') return 'Draw'
-    return 'No pick'
+    return null
 }
 
 function isLocked(match) {
@@ -48,31 +48,37 @@ function TeamCrest({name, src}) {
 }
 
 function StatusPill({match}) {
+    const gt = useGT();
+
     if (match.status === 'live') {
         return (
             <span
                 className="inline-flex items-center gap-1.5 rounded-full border border-error/25 bg-error/10 px-2.5 py-1 text-xs font-bold text-error">
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error"/>
-        <T>Live</T>
-      </span>
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error"/>
+                <T>Live</T>
+            </span>
         )
     }
     if (match.result) {
-        const label = match.result === 'home' ? match.home : match.result === 'away' ? match.away : 'Draw'
+        const teamName = match.result === 'home' ? match.home : match.result === 'away' ? match.away : null
         return (
             <span
                 className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
-        <CheckCircle2 size={11}/>
-                {label} <T>won</T>
-      </span>
+                <CheckCircle2 size={11}/>
+                {teamName ? (
+                    <T><span><Var>{teamName}</Var> won</span></T>
+                ) : (
+                    <T>Draw</T>
+                )}
+            </span>
         )
     }
     return (
         <span
             className="inline-flex items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-1 text-xs font-semibold text-base-content/45">
-      <span className="h-1.5 w-1.5 rounded-full bg-base-content/25"/>
-      <T>Upcoming</T>
-    </span>
+            <span className="h-1.5 w-1.5 rounded-full bg-base-content/25"/>
+            <T>Upcoming</T>
+        </span>
     )
 }
 
@@ -92,13 +98,12 @@ export default function MatchPredictionCard({
     const isFinal = Boolean(match.result)
     const showScore = hasMatchScore(match)
     const pickIsCorrect = isFinal && prediction?.pick === match.result
-    const pickStatus = prediction
-        ? `${isFinal ? (pickIsCorrect ? 'Correct pick' : 'Missed pick') : (readOnly ? 'Pick' : 'Your pick')}: ${pickLabel(match, prediction.pick)}`
-        : (readOnly ? 'No pick' : onShowAuth ? 'Sign in to pick' : onShowJoin ? 'Join to pick' : 'No pick yet')
+
+    // FIX 1: Wrap static code terms in the gt() hook so they translate inside arrays
     const pickOptions = [
-        {pick: 'home', label: 'Home', name: match.home},
-        {pick: 'draw', label: 'Draw', name: '—'},
-        {pick: 'away', label: 'Away', name: match.away},
+        {pick: 'home', label: gt('Home'), name: match.home},
+        {pick: 'draw', label: gt('Draw'), name: '—'},
+        {pick: 'away', label: gt('Away'), name: match.away},
     ]
 
     return (
@@ -106,8 +111,8 @@ export default function MatchPredictionCard({
             className={`overflow-hidden border border-base-300 bg-base-100 ${compact ? 'rounded-xl' : 'rounded-2xl'}`}>
             <div
                 className={`flex items-center gap-2 border-b border-base-300 bg-base-200/50 text-xs ${compact ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
-                <T context="sports event stage"><span
-                    className="font-semibold text-base-content/50"><Var>{match.stage}</Var></span></T>
+                {/* FIX 2: Dynamic database strings like stage names are cleanly handled via gt() */}
+                <span className="font-semibold text-base-content/50">{gt(match.stage)}</span>
                 <div className="ml-auto"><StatusPill match={match}/></div>
             </div>
 
@@ -116,35 +121,35 @@ export default function MatchPredictionCard({
                     <div className="flex flex-col items-end gap-1.5">
                         <TeamCrest name={match.home} src={match.homeCrest}/>
                         <div className={`text-right font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
-                            <T context="Sports or country team">
-                                <Var>
-                                    {match.home}
-                                </Var>
-                            </T>
+                            {gt(match.home)}
                         </div>
                     </div>
                     <div className="flex items-center justify-center">
                         {showScore ? (
                             <span
                                 className={`rounded-xl border border-base-300 bg-base-200 font-black text-base-content ${compact ? 'px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-base'}`}>
-                {match.homeScore}–{match.awayScore}
-              </span>
+                                {match.homeScore}–{match.awayScore}
+                            </span>
                         ) : (
                             <span
-                                className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-base-content/70"><T>VS</T></span>
+                                className="rounded-xl bg-neutral/5 border border-base-300 px-2.5 py-1 text-xs font-black text-base-content/70">
+                                <T>VS</T>
+                            </span>
                         )}
                     </div>
                     <div className="flex flex-col items-start gap-1.5">
                         <TeamCrest name={match.away} src={match.awayCrest}/>
-
                         <div className={`font-black leading-tight ${compact ? 'text-sm' : 'text-base'}`}>
-                            <T context="Sports or country team"><Var>{match.away}</Var></T></div>
+                            {gt(match.away)}
+                        </div>
                     </div>
                 </div>
 
                 <div className={`flex justify-center text-xs text-base-content/45 ${compact ? 'mb-3' : 'mb-4'}`}>
-                    <span className="flex items-center gap-1"><CalendarClock
-                        size={12}/>{formatKickoff(match.kickoff)}</span>
+                    <span className="flex items-center gap-1">
+                        <CalendarClock size={12}/>
+                        {formatKickoff(match.kickoff)}
+                    </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -175,18 +180,11 @@ export default function MatchPredictionCard({
                                         : 'border-base-300 bg-base-100 hover:border-primary/40 hover:bg-primary/5 hover:text-primary'
                                 }`}
                             >
-                                <T context="sports match">
-                                    <div
-                                        className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">
-                                        <Var>
-                                            {loading ? '…' : label}
-                                        </Var>
-                                    </div>
-                                </T>
+                                <div className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">
+                                    {loading ? '…' : label}
+                                </div>
                                 <div className="truncate text-sm font-black">
-                                    <T context="country or sports team">
-                                        <Var>{name}</Var>
-                                    </T>
+                                    {name === '—' ? name : gt(name)}
                                 </div>
                             </button>
                         )
@@ -195,18 +193,33 @@ export default function MatchPredictionCard({
 
                 <div
                     className={`flex items-center justify-between text-xs text-base-content/45 ${compact ? 'mt-2.5' : 'mt-3'}`}>
-          <span className={`flex items-center gap-1.5 font-black ${
-              isFinal && prediction ? (pickIsCorrect ? 'text-success' : 'text-error') : 'text-base-content/60'
-          }`}>
-            {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
-              <T context="Status of pick in a sports prediction pool">
-              <Var>{pickStatus}</Var>
-              </T>
-          </span>
+                    <span className={`flex items-center gap-1.5 font-black ${
+                        isFinal && prediction ? (pickIsCorrect ? 'text-success' : 'text-error') : 'text-base-content/60'
+                    }`}>
+                        {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
+
+                        {/* FIX 3: Replaced the dynamic JavaScript string builder with structured JSX markup that the compiler can natively read */}
+                        {!prediction ? (
+                            readOnly ? <T>No pick</T> : onShowAuth ? <T>Sign in to pick</T> : onShowJoin ?
+                                <T>Join to pick</T> : <T>No pick yet</T>
+                        ) : isFinal ? (
+                            pickIsCorrect
+                                ?
+                                <T context="Status of pick"><span>Correct pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                :
+                                <T context="Status of pick"><span>Missed pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                        ) : (
+                            readOnly
+                                ?
+                                <T context="Status of pick"><span>Pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                                :
+                                <T context="Status of pick"><span>Your pick: <Var>{prediction.pick === 'draw' ? gt('Draw') : gt(getPickTeamName(match, prediction.pick))}</Var></span></T>
+                        )}
+                    </span>
                     <span className="flex items-center gap-1">
-            {locked ? <Lock size={12}/> : <CheckCircle2 size={12}/>}
+                        {locked ? <Lock size={12}/> : <CheckCircle2 size={12}/>}
                         {locked ? gt('Locked') : gt('Open')}
-          </span>
+                    </span>
                 </div>
             </div>
         </article>
