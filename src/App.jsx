@@ -826,12 +826,12 @@ function App() {
       <header className={HERO_SURFACE} style={HERO_STYLE}>
         <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE} />
         <div className="relative mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-base-content/55">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold uppercase tracking-widest text-base-content/55">
                  {activeWorkspace?.name || workspaceName || 'Prediction Pool'}
               </div>
-              <h1 className="mt-2 text-3xl font-black leading-tight sm:text-4xl">
+              <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">
                 World Cup 2026
               </h1>
             </div>
@@ -1652,7 +1652,7 @@ function LeaderboardPage({ leaderboard, matches, predictions }) {
                   <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
                     podiumStyle ? podiumStyle.rank : 'border-base-300 bg-base-100 text-base-content/40'
                   }`}>
-                    {podiumStyle ? <Medal size={14} aria-label={`${podiumStyle.medal} medal`} /> : index + 1}
+                    {index + 1}
                   </div>
 
                   <PlayerAvatar name={player.name} size={38} className="border border-white shadow-sm" />
@@ -1662,8 +1662,8 @@ function LeaderboardPage({ leaderboard, matches, predictions }) {
                     <div className="flex min-w-0 items-center gap-2">
                       <div className="truncate font-black">{player.name}</div>
                       {podiumStyle && (
-                        <span className={`hidden rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide sm:inline-flex ${podiumStyle.rank}`}>
-                          {podiumStyle.medal}
+                        <span className={`hidden items-center rounded-full border p-1 sm:inline-flex ${podiumStyle.rank}`}>
+                          <Medal size={12} aria-label={`${podiumStyle.medal} medal`} />
                         </span>
                       )}
                     </div>
