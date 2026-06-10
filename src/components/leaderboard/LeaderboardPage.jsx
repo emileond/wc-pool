@@ -1,9 +1,9 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { useRef, useState } from 'react'
 import { Activity, Trophy, Users } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
 import PlayerAvatar from '../shared/PlayerAvatar'
+import PlayerNameHoverCard from '../shared/PlayerNameHoverCard'
 
 function leaderboardPlayerId(player) {
   return String(player.player || player.id || '')
@@ -34,82 +34,6 @@ function podiumMedalSrcForIndex(index) {
     '/medals/3rd.png',
   ]
   return medalPaths[index] || ''
-}
-
-function NameHoverCard({ player, index, accuracy, onOpenProfile }) {
-  const playerId = leaderboardPlayerId(player)
-  const cardRef = useRef(null)
-  const [open, setOpen] = useState(false)
-  const [placement, setPlacement] = useState('top')
-
-  function updatePlacement() {
-    const triggerRect = cardRef.current?.getBoundingClientRect()
-    if (!triggerRect) return
-    const cardHeight = 160
-    const gap = 10
-    const spaceAbove = triggerRect.top
-    if (spaceAbove >= cardHeight + gap) {
-      setPlacement('top')
-      return
-    }
-    setPlacement('bottom')
-  }
-
-  return (
-    <div
-      ref={cardRef}
-      className="relative min-w-0"
-      onMouseEnter={() => {
-        updatePlacement()
-        setOpen(true)
-      }}
-      onMouseLeave={() => setOpen(false)}
-    >
-      <button
-        type="button"
-        onClick={() => onOpenProfile(playerId)}
-        onFocus={() => {
-          updatePlacement()
-          setOpen(true)
-        }}
-        onBlur={() => setOpen(false)}
-        className="cursor-pointer truncate text-left font-bold hover:underline focus-visible:underline"
-      >
-        {player.name}
-      </button>
-
-      <div className={`pointer-events-none absolute left-1/2 z-20 w-64 -translate-x-1/2 rounded-xl border border-base-300 bg-base-100 p-3 shadow-xl transition-all ${
-        open ? 'opacity-100' : 'opacity-0'
-      } ${
-        placement === 'top'
-          ? `bottom-full mb-2 ${open ? 'translate-y-0' : 'translate-y-1'}`
-          : `top-full mt-2 ${open ? 'translate-y-0' : '-translate-y-1'}`
-      }`}>
-        <div className="mb-2 flex items-center gap-2.5">
-          <PlayerAvatar name={player.name} size={34} />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-black">{player.name}</div>
-            <div className="flex items-center gap-1.5 text-xs text-base-content/50">#{index + 1}</div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="rounded-lg bg-base-200/70 px-2 py-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-base-content/50"><T>Points</T></div>
-            <div className="text-sm font-black">{player.points}</div>
-          </div>
-          <div className="rounded-lg bg-base-200/70 px-2 py-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-base-content/50"><T>Correct</T></div>
-            <div className="text-sm font-black">{player.correct}</div>
-          </div>
-          <div className="rounded-lg bg-base-200/70 px-2 py-1.5">
-            <div className="text-[10px] font-bold uppercase tracking-wide text-base-content/50"><T>Accuracy</T></div>
-            <div className="text-sm font-black">{accuracy}%</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 }
 
 export default function LeaderboardPage({ leaderboard, matches, onOpenProfile }) {
@@ -178,9 +102,13 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-2">
                       {onOpenProfile ? (
-                        <NameHoverCard
-                          player={player}
-                          index={index}
+                        <PlayerNameHoverCard
+                          playerId={leaderboardPlayerId(player)}
+                          name={player.name}
+                          rank={index + 1}
+                          points={player.points}
+                          correct={player.correct}
+                          predictions={player.predictions}
                           accuracy={accuracy}
                           onOpenProfile={onOpenProfile}
                         />

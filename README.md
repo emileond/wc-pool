@@ -98,6 +98,7 @@ CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspa
 - `predictions` number
 - `accuracy` number
 - `rank` number
+- `previous_rank` number (required for activity feed rank-climb events)
 
 Add a unique index for one leaderboard row per user per workspace:
 
@@ -239,3 +240,10 @@ The leaderboard is stored in the `leaderboard` collection and loaded directly by
 - `scheduled-leaderboard-sync` runs every minute to pick up newly submitted predictions.
 
 The one-minute leaderboard schedule does not call football-data.org, so it does not count against the 100/day football-data request limit.
+
+Leaderboard sync writes `previous_rank` on every create/update:
+
+- On create, `previous_rank` is initialized to `rank`.
+- On update, `previous_rank` is set to the row's prior `rank` before applying the new one.
+
+The Activity feed rank-climb item is shown only when `previous_rank - rank >= 2`.

@@ -4,6 +4,7 @@ import {GTProvider, LocaleSelector, T, Var} from 'gt-react'
 import gtConfig from '../gt.config.json'
 import loadTranslations from './loadTranslations.ts'
 import {
+    Activity,
     CheckCircle2,
     ChevronDown,
     CircleHelp,
@@ -33,6 +34,7 @@ import LeaderboardPage from './components/leaderboard/LeaderboardPage'
 import PlayerProfilePage from './components/leaderboard/PlayerProfilePage'
 import AuthModal from './components/auth/AuthModal'
 import AdminPage from './components/admin/AdminPage'
+import ActivityFeedPage from './components/feed/ActivityFeedPage'
 
 pb.autoCancellation(false)
 
@@ -157,6 +159,8 @@ function normalizeMatch(record) {
         result: record.result || '',
         homeScore: optionalScore(record.home_score),
         awayScore: optionalScore(record.away_score),
+        createdAt: record.created || '',
+        updatedAt: record.updated || '',
     }
 }
 
@@ -204,6 +208,8 @@ function normalizePrediction(record) {
         player: typeof user === 'string' ? user : user?.id,
         match: typeof record.match === 'string' ? record.match : record.match?.id,
         pick: record.pick,
+        createdAt: record.created || '',
+        updatedAt: record.updated || '',
     }
 }
 
@@ -219,6 +225,11 @@ function normalizeLeaderboard(record) {
         predictions: Number(record.predictions) || 0,
         accuracy: Number(record.accuracy) || 0,
         rank: Number(record.rank) || 0,
+        previousRank: optionalInteger(
+            record.previous_rank ?? record.previousRank ?? record.rank_previous,
+        ),
+        createdAt: record.created || '',
+        updatedAt: record.updated || '',
     }
 }
 
@@ -306,7 +317,10 @@ function normalizeAppRoute(pathname) {
     const segments = pathname.split('/').filter(Boolean)
     const hasWorkspace = segments[0] && segments[0] !== '_'
     const section = hasWorkspace ? (segments[1] || 'predictions') : (segments[1] || segments[0] || 'predictions')
-    const page = ['predictions', 'leaderboard', 'admin'].includes(section) ? section : 'predictions'
+    const normalizedSection = section === 'pulse' ? 'activity' : section
+    const page = ['predictions', 'leaderboard', 'activity', 'admin'].includes(normalizedSection)
+        ? normalizedSection
+        : 'predictions'
     const profileBaseIndex = hasWorkspace ? 2 : (segments[0] === '_' ? 2 : 1)
     const profileId = page === 'leaderboard' && segments[profileBaseIndex] === 'player' && segments[profileBaseIndex + 1]
         ? decodeURIComponent(segments[profileBaseIndex + 1])
@@ -883,6 +897,9 @@ function AppContent() {
                                 <NavButton active={activePage === 'leaderboard'}
                                            onClick={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
                                            icon={Trophy}>Leaderboard</NavButton>
+                                <NavButton active={activePage === 'activity'}
+                                           onClick={() => navigate(workspacePath(workspaceName, 'activity'))}
+                                           icon={Activity}>Activity</NavButton>
                                 {/*<NavButton ctive={activePage === 'admin'}
                   onClick={() => setActivePage('admin')} icon={Settings}>Admin</NavButton>*/}
                             </nav>
@@ -891,8 +908,17 @@ function AppContent() {
                 </div>
             </header>
 
-            <main className="mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-3 lg:px-8">
-                <section ref={pageParent} className="min-w-0 lg:col-span-2">
+            <main className={`mx-auto grid max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8 ${
+                activePage === 'predictions' ? 'lg:grid-cols-3' : 'lg:grid-cols-1'
+            }`}>
+                <section
+                    ref={pageParent}
+                    className={`min-w-0 ${
+                        activePage === 'predictions'
+                            ? 'lg:col-span-2'
+                            : 'mx-auto w-full max-w-[53rem]'
+                    }`}
+                >
                     {activeWorkspace && pocketbaseQueryError && (
                         <Panel className="mb-5 border border-error/30">
                             <p className="text-sm font-semibold text-error">
@@ -936,7 +962,13 @@ function AppContent() {
                                 leaderboard={leaderboard}
                                 matches={matches}
                                 predictions={effectiveData.predictions}
-                                onBack={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
+                                onBack={() => {
+                                    if (location.state?.fromRoute) {
+                                        navigate(-1)
+                                        return
+                                    }
+                                    navigate(workspacePath(workspaceName, 'leaderboard'))
+                                }}
                             />
                         ) : (
                             <LeaderboardPage
@@ -944,10 +976,27 @@ function AppContent() {
                                 matches={matches}
                                 predictions={effectiveData.predictions}
                                 onOpenProfile={(selectedPlayerId) => {
-                                    navigate(leaderboardProfilePath(workspaceName, selectedPlayerId))
+                                    navigate(
+                                        leaderboardProfilePath(workspaceName, selectedPlayerId),
+                                        {state: {fromRoute: location.pathname}},
+                                    )
                                 }}
                             />
                         )
+                    )}
+                    {activeWorkspace && activePage === 'activity' && (
+                        <ActivityFeedPage
+                            players={effectiveData.players}
+                            matches={matches}
+                            predictions={effectiveData.predictions}
+                            leaderboard={leaderboard}
+                            onOpenProfile={(selectedPlayerId) => {
+                                navigate(
+                                    leaderboardProfilePath(workspaceName, selectedPlayerId),
+                                    {state: {fromRoute: location.pathname}},
+                                )
+                            }}
+                        />
                     )}
                     {activePage === 'admin' && (
                         <AdminPage
@@ -960,23 +1009,25 @@ function AppContent() {
                     )}
                 </section>
 
-                <aside className="space-y-4">
-                    <UserStatsCard
-                        player={player}
-                        authUser={authUser}
-                        stats={playerStats}
-                        workspaceName={activeWorkspace?.name}
-                        onJoin={activeWorkspace ? (authUser ? openJoinModal : () => openAuth('signup')) : null}
-                    />
+                {activePage === 'predictions' && (
+                    <aside className="space-y-4">
+                        <UserStatsCard
+                            player={player}
+                            authUser={authUser}
+                            stats={playerStats}
+                            workspaceName={activeWorkspace?.name}
+                            onJoin={activeWorkspace ? (authUser ? openJoinModal : () => openAuth('signup')) : null}
+                        />
 
-                    <PoolStatusCard
-                        playersCount={effectiveData.players.length}
-                        matchesCount={matches.length}
-                        completedMatches={completedMatches}
-                        totalPredictions={effectiveData.predictions.length}
-                        countdown={poolCountdown}
-                    />
-                </aside>
+                        <PoolStatusCard
+                            playersCount={effectiveData.players.length}
+                            matchesCount={matches.length}
+                            completedMatches={completedMatches}
+                            totalPredictions={effectiveData.predictions.length}
+                            countdown={poolCountdown}
+                        />
+                    </aside>
+                )}
             </main>
         </div>
     )

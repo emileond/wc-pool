@@ -46,6 +46,7 @@ type LeaderboardRecord = {
   predictions?: number;
   accuracy?: number;
   rank?: number;
+  previous_rank?: number;
 };
 
 type LeaderboardRow = {
@@ -152,11 +153,18 @@ async function upsertLeaderboardRow(
 
     if (unchanged) return "skipped";
 
-    await pb.collection("leaderboard").update(existing.id, row);
+    const previousRank = Number(existing.rank) || row.rank;
+    await pb.collection("leaderboard").update(existing.id, {
+      ...row,
+      previous_rank: previousRank,
+    });
     return "updated";
   }
 
-  await pb.collection("leaderboard").create(row);
+  await pb.collection("leaderboard").create({
+    ...row,
+    previous_rank: row.rank,
+  });
   return "created";
 }
 

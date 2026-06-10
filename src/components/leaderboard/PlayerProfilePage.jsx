@@ -40,7 +40,7 @@ export default function PlayerProfilePage({ playerId, leaderboard, matches, pred
         <div className="space-y-3 py-2">
           <button type="button" className="btn btn-ghost btn-sm rounded-xl" onClick={onBack}>
             <ArrowLeft size={16} />
-            <T>Back to leaderboard</T>
+            <T>Back</T>
           </button>
           <p className="text-sm text-base-content/55"><T>Player not found in this leaderboard.</T></p>
         </div>
@@ -52,7 +52,7 @@ export default function PlayerProfilePage({ playerId, leaderboard, matches, pred
     <div className="space-y-4">
       <button type="button" className="btn btn-ghost btn-sm rounded-xl" onClick={onBack}>
         <ArrowLeft size={16} />
-        <T>Back to leaderboard</T>
+        <T>Back</T>
       </button>
 
       <Panel>
