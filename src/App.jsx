@@ -36,6 +36,7 @@ import AuthModal from './components/auth/AuthModal'
 import AdminPage from './components/admin/AdminPage'
 import ActivityFeedPage from './components/feed/ActivityFeedPage'
 import HomeLandingPage from './components/marketing/HomeLandingPage'
+import CreatePoolPage from './components/pools/CreatePoolPage'
 import MyPoolsPage from './components/pools/MyPoolsPage'
 
 pb.autoCancellation(false)
@@ -87,7 +88,7 @@ pb.autoCancellation(false)
 
 const THEME_KEY = 'wc-pool-theme'
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '2026'
-const GLOBAL_PAGES = new Set(['pools'])
+const GLOBAL_PAGES = new Set(['pools', 'create-pool'])
 
 const STAGE_TABS = [
     {id: 'groups', label: 'Groups', stage: 'Group Stage'},
@@ -320,6 +321,10 @@ function isPoolsRoute(pathname) {
     return pathname === '/pools'
 }
 
+function isCreatePoolRoute(pathname) {
+    return pathname === '/create-pool'
+}
+
 function normalizeAppRoute(pathname) {
     const segments = pathname.split('/').filter(Boolean)
     const hasWorkspace = segments[0] && segments[0] !== '_'
@@ -530,6 +535,7 @@ function AppContent() {
     const profilePlayerId = routeState.profileId
     const isHomeRoute = location.pathname === '/'
     const poolsRoute = isPoolsRoute(location.pathname)
+    const createPoolRoute = isCreatePoolRoute(location.pathname)
     const [activeWorkspace, setActiveWorkspace] = useState(null)
     const [themePreference, setThemePreference] = useState(initialThemePreference)
     const [systemTheme, setSystemTheme] = useState(preferredSystemTheme)
@@ -808,7 +814,7 @@ function AppContent() {
         setJoinModal(true)
     }
 
-    async function createPool(name) {
+    async function createPool(name, plan = 'free') {
         const normalizedName = cleanName(name || '')
         if (!normalizedName || !authUser) {
             throw new Error('Invalid pool name.')
@@ -823,8 +829,8 @@ function AppContent() {
                 role: 'owner',
             })
             await refreshUserPools()
-            toast.success(`Pool "${normalizedName}" created.`)
-            navigate(workspacePath(workspace.name, 'predictions'))
+            toast.success(`Pool "${normalizedName}" created (${plan === 'pro' ? 'Pro' : 'Free'}).`)
+            return normalizeWorkspace(workspace)
         } catch (err) {
             toast.error(friendlyAuthError(err))
             throw err
@@ -949,10 +955,65 @@ function AppContent() {
                     themePreference={themePreference}
                     onThemeChange={changeThemePreference}
                     onLogin={() => openAuth('login')}
-                    onSignup={() => openAuth('signup')}
                     onLogout={logout}
                 />
             </>
+        )
+    }
+
+    if (createPoolRoute) {
+        return (
+            <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
+                <AuthModal
+                    open={authModal}
+                    onClose={() => setAuthModal(false)}
+                    view={authView}
+                    onViewChange={(nextView) => {
+                        setAuthView(nextView)
+                        setAuthError('')
+                    }}
+                    name={authName}
+                    setName={setAuthName}
+                    email={authEmail}
+                    setEmail={setAuthEmail}
+                    password={authPassword}
+                    setPassword={setAuthPassword}
+                    workspaceName={activeWorkspace?.name}
+                    error={authError}
+                    loading={authLoading}
+                    onLogin={handleLogin}
+                    onSignup={handleSignup}
+                />
+                <header className={HERO_SURFACE} style={HERO_STYLE}>
+                    <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
+                    <div className="relative mx-auto flex max-w-7xl items-start justify-between gap-3 px-4 py-6 sm:px-6 lg:px-8">
+                        <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-base-content/55">Setup</div>
+                            <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">Create Pool</h1>
+                        </div>
+                        <HeaderUserMenu
+                            player={player || authUser}
+                            workspace={{name: 'Create Pool'}}
+                            themePreference={themePreference}
+                            onThemeChange={changeThemePreference}
+                            onLogin={() => openAuth('login')}
+                            onSignup={() => openAuth('signup')}
+                            onLogout={logout}
+                        />
+                    </div>
+                </header>
+                <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+                    <CreatePoolPage
+                        authUser={authUser}
+                        creating={creatingPool}
+                        onLogin={() => openAuth('login')}
+                        onSignup={() => openAuth('signup')}
+                        onCreatePool={createPool}
+                        onOpenPool={(workspace) => navigate(workspacePath(workspace, 'predictions'))}
+                        onOpenPools={() => navigate('/pools')}
+                    />
+                </main>
+            </div>
         )
     }
 
@@ -1002,10 +1063,9 @@ function AppContent() {
                         authUser={authUser}
                         pools={userPools}
                         loading={userPoolsLoading}
-                        creating={creatingPool}
                         onLogin={() => openAuth('login')}
                         onSignup={() => openAuth('signup')}
-                        onCreatePool={createPool}
+                        onCreate={() => navigate('/create-pool')}
                         onOpenPool={(selectedWorkspace) => navigate(workspacePath(selectedWorkspace, 'predictions'))}
                     />
                 </main>
@@ -1399,6 +1459,11 @@ function HeaderUserMenu({player, workspace, themePreference, onThemeChange, onLo
                         </>
                     ) : (
                         <>
+                            <li>
+                                <a href="/create-pool" onClick={() => setMenuOpen(false)}>
+                                    <T>Create Pool</T>
+                                </a>
+                            </li>
                             <li>
                                 <a href="/pools" onClick={() => setMenuOpen(false)}>
                                     <T>My Pools</T>

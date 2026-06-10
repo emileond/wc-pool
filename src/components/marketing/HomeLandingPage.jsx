@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { LocaleSelector } from 'gt-react'
+import PricingPlanCards from '../pools/PricingPlanCards'
 
 const steps = [
   {
@@ -86,24 +87,6 @@ const featureCards = [
   },
 ]
 
-const freeFeatures = [
-  'Up to 10 participants',
-  'Live leaderboards',
-  'Automatic score tracking',
-  'Activity feed & reactions',
-  'Multi-language support',
-  'Tournament Wrapped recap',
-]
-
-const proFeatures = [
-  'Unlimited participants',
-  'Pick trends (see group bets)',
-  'Advanced stats & analytics',
-  'Custom pool branding',
-  'Detailed stage summaries',
-  'Priority email support',
-]
-
 const stats = [
   { value: '2,400+', label: 'Pools created' },
   { value: '18,000+', label: 'Players competing' },
@@ -116,21 +99,6 @@ function initials(name = '') {
     .slice(0, 2)
     .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
-}
-
-function FeatureList({ items }) {
-  return (
-    <ul className="mt-5 space-y-2.5">
-      {items.map((item) => (
-        <li key={item} className="flex items-start gap-2.5 text-sm text-base-content/80">
-          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Check size={10} strokeWidth={3} />
-          </span>
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  )
 }
 
 function HeroVisual() {
@@ -339,7 +307,6 @@ export default function HomeLandingPage({
   themePreference,
   onThemeChange,
   onLogin,
-  onSignup,
   onLogout,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -422,6 +389,9 @@ export default function HomeLandingPage({
                     <li>
                       <a href="/pools" className="font-semibold">My pools</a>
                     </li>
+                    <li>
+                      <a href="/create-pool">Create pool</a>
+                    </li>
                     <li className="menu-title mt-1">
                       <span>Theme</span>
                     </li>
@@ -480,13 +450,9 @@ export default function HomeLandingPage({
                 >
                   Log in
                 </button>
-                <button
-                  type="button"
-                  onClick={onSignup}
-                  className="btn btn-primary btn-sm sm:btn-md font-bold"
-                >
+                <a href="/create-pool" className="btn btn-primary btn-sm sm:btn-md font-bold">
                   Start a Pool
-                </button>
+                </a>
               </>
             )}
           </div>
@@ -535,14 +501,10 @@ export default function HomeLandingPage({
                   </a>
                 ) : (
                   <>
-                    <button
-                      type="button"
-                      onClick={onSignup}
-                      className="btn btn-primary btn-lg gap-2 font-bold shadow-lg shadow-primary/30"
-                    >
+                    <a href="/create-pool" className="btn btn-primary btn-lg gap-2 font-bold shadow-lg shadow-primary/30">
                       Start a Free Pool
                       <ArrowRight size={18} />
-                    </button>
+                    </a>
                     <a
                       href="#how-it-works"
                       className="btn btn-outline btn-lg border-base-300 font-semibold text-base-content"
@@ -672,51 +634,11 @@ export default function HomeLandingPage({
             </p>
           </div>
 
-          <div className="mt-12 grid gap-6 lg:grid-cols-2 lg:gap-8">
-            {/* Free */}
-            <article className="flex flex-col rounded-2xl border border-base-300 bg-base-200 p-8">
-              <div>
-                <h3 className="text-xl font-black text-base-content">Free</h3>
-                <p className="mt-1 text-sm text-base-content/60">Perfect for small groups, zero commitment.</p>
-              </div>
-              <div className="mt-6 flex items-end gap-1">
-                <span className="text-5xl font-black text-base-content">$0</span>
-                <span className="mb-1.5 text-sm text-base-content/50">forever</span>
-              </div>
-              <FeatureList items={freeFeatures} />
-              <button
-                type="button"
-                onClick={player ? undefined : onSignup}
-                className="btn btn-outline mt-8 w-full font-bold"
-              >
-                {player ? <a href="/pools">Go to My Pools</a> : 'Start for Free'}
-              </button>
-            </article>
-
-            {/* Pro */}
-            <article className="relative flex flex-col rounded-2xl border-2 border-primary bg-base-100 p-8 shadow-xl shadow-primary/10">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary px-4 py-1 text-xs font-black uppercase tracking-wide text-primary-content shadow-md">
-                  ⭐ Most Popular
-                </span>
-              </div>
-              <div>
-                <h3 className="text-xl font-black text-base-content">Pro Pool</h3>
-                <p className="mt-1 text-sm text-base-content/60">One-time per pool. Organizer pays, everyone benefits.</p>
-              </div>
-              <div className="mt-6 flex items-end gap-1">
-                <span className="text-5xl font-black text-base-content">$9</span>
-                <span className="mb-1.5 text-sm text-base-content/50">one-time / pool</span>
-              </div>
-              <FeatureList items={proFeatures} />
-              <button
-                type="button"
-                onClick={player ? undefined : onSignup}
-                className="btn btn-primary mt-8 w-full gap-2 font-bold shadow-lg shadow-primary/30"
-              >
-                {player ? <a href="/pools">Go to My Pools</a> : <>Get Pro <ArrowRight size={16} /></>}
-              </button>
-            </article>
+          <div className="mt-12">
+            <PricingPlanCards
+              freeAction={<a href="/create-pool" className="btn btn-outline w-full font-bold">Create Free Pool</a>}
+              proAction={<a href="/create-pool" className="btn btn-primary w-full gap-2 font-bold shadow-lg shadow-primary/30">Choose Pro <ArrowRight size={16} /></a>}
+            />
           </div>
         </section>
 
@@ -773,16 +695,12 @@ export default function HomeLandingPage({
                 <p className="text-sm leading-6 text-base-content/60">
                   The tournament is already underway. Set up your group, lock in your picks, and battle it out until the final whistle.
                 </p>
-                <button
-                  type="button"
-                  onClick={player ? undefined : onSignup}
-                  className="btn btn-primary gap-2 font-bold"
-                >
+                <a href={player ? '/pools' : '/create-pool'} className="btn btn-primary gap-2 font-bold">
                   {player
-                    ? <a href="/pools" className="flex items-center gap-2">Go to My Pools <ArrowRight size={16} /></a>
+                    ? <><span>Go to My Pools</span><ArrowRight size={16} /></>
                     : <><span>Create a Free Pool</span><ArrowRight size={16} /></>
                   }
-                </button>
+                </a>
                 {!player && (
                   <p className="text-xs text-base-content/40">
                     Free to start · No credit card required
@@ -815,14 +733,10 @@ export default function HomeLandingPage({
                 </a>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={onSignup}
-                    className="btn btn-primary btn-lg gap-2 font-bold shadow-xl shadow-primary/30"
-                  >
+                  <a href="/create-pool" className="btn btn-primary btn-lg gap-2 font-bold shadow-xl shadow-primary/30">
                     Start a Free Pool
                     <ArrowRight size={18} />
-                  </button>
+                  </a>
                   <a
                     href="#pricing"
                     className="btn btn-outline btn-lg border-base-300 font-semibold text-base-content"

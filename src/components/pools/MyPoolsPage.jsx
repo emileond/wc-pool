@@ -1,5 +1,5 @@
 import { ArrowRight, Plus, Trophy, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import Panel from '../shared/Panel'
 
 function roleBadge(role = 'member') {
@@ -12,24 +12,15 @@ export default function MyPoolsPage({
   authUser,
   pools,
   loading,
-  creating,
   onLogin,
   onSignup,
-  onCreatePool,
+  onCreate,
   onOpenPool,
 }) {
-  const [newPoolName, setNewPoolName] = useState('')
   const sortedPools = useMemo(
     () => [...pools].sort((a, b) => a.workspaceName.localeCompare(b.workspaceName)),
     [pools],
   )
-
-  function handleCreate(event) {
-    event.preventDefault()
-    onCreatePool(newPoolName)
-      .then(() => setNewPoolName(''))
-      .catch(() => {})
-  }
 
   if (!authUser) {
     return (
@@ -61,25 +52,18 @@ export default function MyPoolsPage({
       </div>
 
       <Panel>
-        <form className="grid gap-3 sm:grid-cols-[1fr_auto]" onSubmit={handleCreate}>
-          <label className="form-control">
-            <div className="label pb-1">
-              <span className="label-text text-xs font-semibold uppercase tracking-wide text-base-content/50">Create new pool</span>
-            </div>
-            <input
-              type="text"
-              className="input input-bordered w-full"
-              placeholder="Pool name"
-              value={newPoolName}
-              onChange={(event) => setNewPoolName(event.target.value)}
-              disabled={creating}
-            />
-          </label>
-          <button type="submit" className="btn btn-primary sm:mt-7" disabled={creating || !newPoolName.trim()}>
-            {creating ? <span className="loading loading-spinner loading-sm" /> : <Plus size={16} />}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-black">Create a new pool</h3>
+            <p className="mt-1 text-sm text-base-content/60">
+              Start the guided setup to name your pool, choose a plan, and share it.
+            </p>
+          </div>
+          <button type="button" className="btn btn-primary" onClick={onCreate}>
+            <Plus size={16} />
             Create Pool
           </button>
-        </form>
+        </div>
       </Panel>
 
       <Panel>
