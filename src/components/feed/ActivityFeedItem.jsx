@@ -139,9 +139,9 @@ function TeamCrest({name, src, small = false}) {
     )
 }
 
-function MatchupStrip({event, scoreFallback = 'FT', withTopMargin = true}) {
+function MatchupStrip({event, scoreFallback = 'FT', withTopMargin = true, overrideLabel = ''}) {
     if (!event.home || !event.away) return null
-    const score = scoreLabel(event.homeScore, event.awayScore) || scoreFallback
+    const score = overrideLabel || scoreLabel(event.homeScore, event.awayScore) || scoreFallback
 
     return (
         <div
@@ -161,7 +161,7 @@ function MatchupStrip({event, scoreFallback = 'FT', withTopMargin = true}) {
 function PredictionMiniCard({event}) {
     return (
         <div className="my-2 rounded-lg p-2">
-            <MatchupStrip event={event} scoreFallback="VS" withTopMargin={false}/>
+            <MatchupStrip event={event} scoreFallback="VS" withTopMargin={false} overrideLabel="VS"/>
         </div>
     )
 }

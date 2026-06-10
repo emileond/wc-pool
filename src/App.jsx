@@ -35,6 +35,8 @@ import PlayerProfilePage from './components/leaderboard/PlayerProfilePage'
 import AuthModal from './components/auth/AuthModal'
 import AdminPage from './components/admin/AdminPage'
 import ActivityFeedPage from './components/feed/ActivityFeedPage'
+import HomeLandingPage from './components/marketing/HomeLandingPage'
+import MyPoolsPage from './components/pools/MyPoolsPage'
 
 pb.autoCancellation(false)
 
@@ -85,6 +87,7 @@ pb.autoCancellation(false)
 
 const THEME_KEY = 'wc-pool-theme'
 const ADMIN_PIN = import.meta.env.VITE_ADMIN_PIN || '2026'
+const GLOBAL_PAGES = new Set(['pools'])
 
 const STAGE_TABS = [
     {id: 'groups', label: 'Groups', stage: 'Group Stage'},
@@ -305,12 +308,16 @@ function sortMatches(matches) {
 
 function workspaceNameFromPath(pathname) {
     const [segment = ''] = pathname.split('/').filter(Boolean)
-    if (!segment || segment === '_') return ''
+    if (!segment || segment === '_' || GLOBAL_PAGES.has(segment)) return ''
     try {
         return decodeURIComponent(segment)
     } catch {
         return segment
     }
+}
+
+function isPoolsRoute(pathname) {
+    return pathname === '/pools'
 }
 
 function normalizeAppRoute(pathname) {
@@ -421,6 +428,31 @@ async function loadWorkspaceLeaderboard(workspaceId) {
     return loadPocketBaseCollection('leaderboard', {filter: workspaceFilter, sort: 'rank'}, normalizeLeaderboard)
 }
 
+async function loadUserPools(userId) {
+    if (!userId) return []
+    const userFilter = `user="${escapePbFilterValue(userId)}"`
+    const memberships = await loadPocketBaseCollection('memberships', {
+        filter: userFilter,
+        sort: 'created',
+        expand: 'workspace',
+    }, (record) => ({
+        id: record.id,
+        role: record.role || 'member',
+        workspace: record.expand?.workspace
+            ? normalizeWorkspace(record.expand.workspace)
+            : {id: relationId(record.workspace), name: ''},
+    }))
+
+    return memberships
+        .filter((membership) => membership.workspace?.id && membership.workspace?.name)
+        .map((membership) => ({
+            membershipId: membership.id,
+            role: membership.role,
+            workspaceId: membership.workspace.id,
+            workspaceName: membership.workspace.name,
+        }))
+}
+
 // The authenticated user is a pool player only after joining the active workspace.
 async function resolvePlayerForAuth(workspaceId) {
     const authRecord = pb.authStore.record
@@ -496,6 +528,8 @@ function AppContent() {
     const routeState = useMemo(() => normalizeAppRoute(location.pathname), [location.pathname])
     const activePage = routeState.page
     const profilePlayerId = routeState.profileId
+    const isHomeRoute = location.pathname === '/'
+    const poolsRoute = isPoolsRoute(location.pathname)
     const [activeWorkspace, setActiveWorkspace] = useState(null)
     const [themePreference, setThemePreference] = useState(initialThemePreference)
     const [systemTheme, setSystemTheme] = useState(preferredSystemTheme)
@@ -518,6 +552,9 @@ function AppContent() {
     const [joinModal, setJoinModal] = useState(false)
     const [joinLoading, setJoinLoading] = useState(false)
     const [joinError, setJoinError] = useState('')
+    const [userPools, setUserPools] = useState([])
+    const [userPoolsLoading, setUserPoolsLoading] = useState(false)
+    const [creatingPool, setCreatingPool] = useState(false)
     const [now, setNow] = useState(() => Date.now())
 
     const workspaceId = activeWorkspace?.id
@@ -576,6 +613,26 @@ function AppContent() {
     const canJoinWorkspace = Boolean(activeWorkspace && authUser && !player)
     const [pageParent] = useAutoAnimate({duration: 180, easing: 'ease-out'})
 
+    async function refreshUserPools(authRecord = pb.authStore.record) {
+        if (!authRecord?.id) {
+            setUserPools([])
+            setUserPoolsLoading(false)
+            return []
+        }
+
+        setUserPoolsLoading(true)
+        try {
+            const pools = await loadUserPools(authRecord.id)
+            setUserPools(pools)
+            return pools
+        } catch {
+            setUserPools([])
+            return []
+        } finally {
+            setUserPoolsLoading(false)
+        }
+    }
+
     useEffect(() => {
         const query = window.matchMedia?.('(prefers-color-scheme: dark)')
         if (!query) return undefined
@@ -607,28 +664,40 @@ function AppContent() {
                 const workspace = await loadWorkspaceByName(workspaceName)
                 if (!active) return
                 setActiveWorkspace(workspace)
-                if (!workspace) return
 
-                if (pb.authStore.isValid) {
-                    try {
-                        await pb.collection('users').authRefresh()
-                        if (!active) return
-                        setAuthUser(normalizeUser(pb.authStore.record))
-                        const resolvedPlayer = await resolvePlayerForAuth(workspace.id)
-                        if (!active) return
-                        setPlayer(resolvedPlayer)
-                        return
-                    } catch {
-                        pb.authStore.clear()
-                        setAuthUser(null)
+                if (!pb.authStore.isValid) {
+                    setAuthUser(null)
+                    setPlayer(null)
+                    setUserPools([])
+                    return
+                }
+
+                try {
+                    await pb.collection('users').authRefresh()
+                    if (!active) return
+                    setAuthUser(normalizeUser(pb.authStore.record))
+                    await refreshUserPools(pb.authStore.record)
+
+                    if (!workspace) {
                         setPlayer(null)
+                        return
                     }
+
+                    const resolvedPlayer = await resolvePlayerForAuth(workspace.id)
+                    if (!active) return
+                    setPlayer(resolvedPlayer)
+                } catch {
+                    pb.authStore.clear()
+                    setAuthUser(null)
+                    setPlayer(null)
+                    setUserPools([])
                 }
             } catch {
                 if (!active) return
                 pb.authStore.clear()
                 setAuthUser(null)
                 setPlayer(null)
+                setUserPools([])
             } finally {
                 if (active) setAppLoading(false)
             }
@@ -645,19 +714,20 @@ function AppContent() {
     // ---------------------------------------------------------------------------
     async function handleLogin(event) {
         event.preventDefault()
-        if (!activeWorkspace) {
-            setAuthError('Open a valid workspace URL before signing in.')
-            return
-        }
         setAuthLoading(true)
         setAuthError('')
         try {
             await pb.collection('users').authWithPassword(authEmail, authPassword)
             const resolvedAuthUser = normalizeUser(pb.authStore.record)
-            const resolvedPlayer = await resolvePlayerForAuth(activeWorkspace.id)
             setAuthUser(resolvedAuthUser)
-            setPlayer(resolvedPlayer)
-            await refreshWorkspaceData(activeWorkspace.id)
+            await refreshUserPools(pb.authStore.record)
+            if (activeWorkspace) {
+                const resolvedPlayer = await resolvePlayerForAuth(activeWorkspace.id)
+                setPlayer(resolvedPlayer)
+                await refreshWorkspaceData(activeWorkspace.id)
+            } else {
+                setPlayer(null)
+            }
             setAuthModal(false)
         } catch (err) {
             setAuthError(friendlyAuthError(err))
@@ -668,10 +738,6 @@ function AppContent() {
 
     async function handleSignup(event) {
         event.preventDefault()
-        if (!activeWorkspace) {
-            setAuthError('Open a valid workspace URL before creating an account.')
-            return
-        }
         setAuthLoading(true)
         setAuthError('')
         try {
@@ -683,10 +749,15 @@ function AppContent() {
             })
             await pb.collection('users').authWithPassword(authEmail, authPassword)
             const resolvedAuthUser = normalizeUser(pb.authStore.record)
-            const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
             setAuthUser(resolvedAuthUser)
-            setPlayer(resolvedPlayer)
-            await refreshWorkspaceData(activeWorkspace.id)
+            if (activeWorkspace) {
+                const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
+                setPlayer(resolvedPlayer)
+                await refreshWorkspaceData(activeWorkspace.id)
+            } else {
+                setPlayer(null)
+            }
+            await refreshUserPools(pb.authStore.record)
             setAuthModal(false)
             toast.success(`Welcome, ${authName}!`)
         } catch (err) {
@@ -706,8 +777,9 @@ function AppContent() {
         pb.authStore.clear()
         setAuthUser(null)
         setPlayer(null)
+        setUserPools([])
         setJoinModal(false)
-        navigate(workspacePath(workspaceName, 'predictions'))
+        navigate('/')
         setAdminUnlocked(false)
         refreshWorkspaceData(activeWorkspace?.id).catch(() => {
         })
@@ -721,6 +793,7 @@ function AppContent() {
             const resolvedPlayer = await joinWorkspaceForAuth(activeWorkspace.id)
             setPlayer(resolvedPlayer)
             await refreshWorkspaceData(activeWorkspace.id)
+            await refreshUserPools()
             setJoinModal(false)
             toast.success(`Joined ${activeWorkspace.name}.`)
         } catch (err) {
@@ -733,6 +806,31 @@ function AppContent() {
     function openJoinModal() {
         setJoinError('')
         setJoinModal(true)
+    }
+
+    async function createPool(name) {
+        const normalizedName = cleanName(name || '')
+        if (!normalizedName || !authUser) {
+            throw new Error('Invalid pool name.')
+        }
+
+        setCreatingPool(true)
+        try {
+            const workspace = await pb.collection('workspaces').create({name: normalizedName})
+            await pb.collection('memberships').create({
+                workspace: workspace.id,
+                user: authUser.id,
+                role: 'owner',
+            })
+            await refreshUserPools()
+            toast.success(`Pool "${normalizedName}" created.`)
+            navigate(workspacePath(workspace.name, 'predictions'))
+        } catch (err) {
+            toast.error(friendlyAuthError(err))
+            throw err
+        } finally {
+            setCreatingPool(false)
+        }
     }
 
     // ---------------------------------------------------------------------------
@@ -818,6 +916,99 @@ function AppContent() {
                     <Sparkles size={28} className="mb-4 opacity-70"/>
                     <p className="text-sm font-semibold text-base-content/65">Connecting…</p>
                 </div>
+            </div>
+        )
+    }
+
+    if (isHomeRoute) {
+        return (
+            <>
+                <AuthModal
+                    open={authModal}
+                    onClose={() => setAuthModal(false)}
+                    view={authView}
+                    onViewChange={(nextView) => {
+                        setAuthView(nextView)
+                        setAuthError('')
+                    }}
+                    name={authName}
+                    setName={setAuthName}
+                    email={authEmail}
+                    setEmail={setAuthEmail}
+                    password={authPassword}
+                    setPassword={setAuthPassword}
+                    workspaceName={activeWorkspace?.name}
+                    error={authError}
+                    loading={authLoading}
+                    onLogin={handleLogin}
+                    onSignup={handleSignup}
+                />
+                <HomeLandingPage
+                    theme={theme}
+                    player={player || authUser}
+                    themePreference={themePreference}
+                    onThemeChange={changeThemePreference}
+                    onLogin={() => openAuth('login')}
+                    onSignup={() => openAuth('signup')}
+                    onLogout={logout}
+                />
+            </>
+        )
+    }
+
+    if (poolsRoute) {
+        return (
+            <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
+                <AuthModal
+                    open={authModal}
+                    onClose={() => setAuthModal(false)}
+                    view={authView}
+                    onViewChange={(nextView) => {
+                        setAuthView(nextView)
+                        setAuthError('')
+                    }}
+                    name={authName}
+                    setName={setAuthName}
+                    email={authEmail}
+                    setEmail={setAuthEmail}
+                    password={authPassword}
+                    setPassword={setAuthPassword}
+                    workspaceName={activeWorkspace?.name}
+                    error={authError}
+                    loading={authLoading}
+                    onLogin={handleLogin}
+                    onSignup={handleSignup}
+                />
+                <header className={HERO_SURFACE} style={HERO_STYLE}>
+                    <div className="pointer-events-none absolute inset-0 opacity-45" style={HERO_PATTERN_STYLE}/>
+                    <div className="relative mx-auto flex max-w-7xl items-start justify-between gap-3 px-4 py-6 sm:px-6 lg:px-8">
+                        <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold uppercase tracking-widest text-base-content/55">Account</div>
+                            <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">My Pools</h1>
+                        </div>
+                        <HeaderUserMenu
+                            player={player || authUser}
+                            workspace={{name: 'My Pools'}}
+                            themePreference={themePreference}
+                            onThemeChange={changeThemePreference}
+                            onLogin={() => openAuth('login')}
+                            onSignup={() => openAuth('signup')}
+                            onLogout={logout}
+                        />
+                    </div>
+                </header>
+                <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+                    <MyPoolsPage
+                        authUser={authUser}
+                        pools={userPools}
+                        loading={userPoolsLoading}
+                        creating={creatingPool}
+                        onLogin={() => openAuth('login')}
+                        onSignup={() => openAuth('signup')}
+                        onCreatePool={createPool}
+                        onOpenPool={(selectedWorkspace) => navigate(workspacePath(selectedWorkspace, 'predictions'))}
+                    />
+                </main>
             </div>
         )
     }
@@ -990,6 +1181,7 @@ function AppContent() {
                             matches={matches}
                             predictions={effectiveData.predictions}
                             leaderboard={leaderboard}
+                            canViewActivity={Boolean(player)}
                             onOpenProfile={(selectedPlayerId) => {
                                 navigate(
                                     leaderboardProfilePath(workspaceName, selectedPlayerId),
@@ -1206,15 +1398,22 @@ function HeaderUserMenu({player, workspace, themePreference, onThemeChange, onLo
                             </li>
                         </>
                     ) : (
-                        <li>
-                            <button type="button" className="text-error" onClick={() => {
-                                setMenuOpen(false);
-                                onLogout()
-                            }}>
-                                <LogOut size={16}/>
-                                <T>Sign out</T>
-                            </button>
-                        </li>
+                        <>
+                            <li>
+                                <a href="/pools" onClick={() => setMenuOpen(false)}>
+                                    <T>My Pools</T>
+                                </a>
+                            </li>
+                            <li>
+                                <button type="button" className="text-error" onClick={() => {
+                                    setMenuOpen(false);
+                                    onLogout()
+                                }}>
+                                    <LogOut size={16}/>
+                                    <T>Sign out</T>
+                                </button>
+                            </li>
+                        </>
                     )}
                 </ul>
             )}

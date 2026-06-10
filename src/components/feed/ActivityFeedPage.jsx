@@ -108,6 +108,7 @@ export default function ActivityFeedPage({
   predictions,
   leaderboard,
   onOpenProfile,
+  canViewActivity,
 }) {
   const cursorState = useMemo(() => {
     const cursor = createActivityFeedCursor({ players, matches, predictions, leaderboard })
@@ -151,14 +152,23 @@ export default function ActivityFeedPage({
       </div>
 
       <Panel>
-        <ActivityFeedList
-          key={cursorState.key}
-          cursor={cursorState.cursor}
-          initialEvents={cursorState.initialEvents}
-          initialHasMore={cursorState.initialHasMore}
-          onOpenProfile={onOpenProfile}
-          leaderboardByPlayer={leaderboardByPlayer}
-        />
+        {!canViewActivity ? (
+          <div className="py-8 text-center">
+            <MessageCircleMore className="mx-auto mb-2 text-primary/40" size={24} />
+            <p className="text-sm text-base-content/50">
+              <T>Join this workspace to see player activity.</T>
+            </p>
+          </div>
+        ) : (
+          <ActivityFeedList
+            key={cursorState.key}
+            cursor={cursorState.cursor}
+            initialEvents={cursorState.initialEvents}
+            initialHasMore={cursorState.initialHasMore}
+            onOpenProfile={onOpenProfile}
+            leaderboardByPlayer={leaderboardByPlayer}
+          />
+        )}
       </Panel>
     </div>
   )

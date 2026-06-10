@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react'
 import { ArrowLeft, Medal } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
@@ -17,17 +18,26 @@ function podiumStyleForIndex(index) {
   return podium[index]
 }
 
+const PICKS_PAGE_SIZE = 10
+
 export default function PlayerProfilePage({ playerId, leaderboard, matches, predictions, onBack }) {
   const profile = leaderboard.find((entry) => playerIdFromLeaderboard(entry) === String(playerId))
   const rankIndex = leaderboard.findIndex((entry) => playerIdFromLeaderboard(entry) === String(playerId))
   const rank = rankIndex >= 0 ? rankIndex + 1 : null
   const podiumStyle = rankIndex >= 0 ? podiumStyleForIndex(rankIndex) : null
+  const [picksPage, setPicksPage] = useState(1)
   const matchesById = new Map(matches.map((match) => [match.id, match]))
   const picks = predictions
     .filter((prediction) => prediction.player === playerId)
     .map((prediction) => ({ prediction, match: matchesById.get(prediction.match) }))
     .filter(({ match }) => Boolean(match))
     .sort((a, b) => new Date(a.match.kickoff) - new Date(b.match.kickoff))
+  const totalPicksPages = Math.max(1, Math.ceil(picks.length / PICKS_PAGE_SIZE))
+  const currentPicksPage = Math.min(picksPage, totalPicksPages)
+  const pagedPicks = useMemo(() => {
+    const start = (currentPicksPage - 1) * PICKS_PAGE_SIZE
+    return picks.slice(start, start + PICKS_PAGE_SIZE)
+  }, [currentPicksPage, picks])
 
   const correct = picks.filter(({ prediction, match }) => match.result && prediction.pick === match.result).length
   const wrong = picks.filter(({ prediction, match }) => match.result && prediction.pick !== match.result).length
@@ -104,8 +114,9 @@ export default function PlayerProfilePage({ playerId, leaderboard, matches, pred
         {picks.length === 0 ? (
           <div className="py-6 text-sm text-base-content/50"><T>No picks yet.</T></div>
         ) : (
-          <div className="space-y-2">
-            {picks.map(({ prediction, match }) => (
+          <div className="space-y-3">
+            <div className="space-y-2">
+            {pagedPicks.map(({ prediction, match }) => (
               <MatchPredictionCard
                 key={prediction.id}
                 match={match}
@@ -114,6 +125,30 @@ export default function PlayerProfilePage({ playerId, leaderboard, matches, pred
                 compact
               />
             ))}
+            </div>
+            {totalPicksPages > 1 && (
+              <div className="flex items-center justify-between gap-2 border-t border-base-300 pt-3">
+                <button
+                  type="button"
+                  className="btn btn-sm rounded-lg"
+                  onClick={() => setPicksPage((page) => Math.max(1, page - 1))}
+                  disabled={currentPicksPage <= 1}
+                >
+                  <T>Previous</T>
+                </button>
+                <span className="text-xs font-semibold text-base-content/55">
+                  <T>Picks page</T> {currentPicksPage}/{totalPicksPages}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm rounded-lg"
+                  onClick={() => setPicksPage((page) => Math.min(totalPicksPages, page + 1))}
+                  disabled={currentPicksPage >= totalPicksPages}
+                >
+                  <T>Next</T>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </Panel>
