@@ -15,11 +15,12 @@ type FootballDataTeam = {
 };
 
 type FootballDataScore = {
-  winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
-  fullTime?: {
-    home?: number | null;
-    away?: number | null;
-  } | null;
+  winner?: string | null;
+  fullTime?: FootballDataScorePair | null;
+  regularTime?: FootballDataScorePair | null;
+  extraTime?: FootballDataScorePair | null;
+  penalties?: FootballDataScorePair | null;
+  halfTime?: FootballDataScorePair | null;
 };
 
 type FootballDataMatch = {
@@ -39,9 +40,17 @@ type FootballDataMatch = {
   group?: string | null;
   matchday?: number | null;
   venue?: string | null;
+  lastUpdated?: string | null;
   homeTeam: FootballDataTeam;
   awayTeam: FootballDataTeam;
   score?: FootballDataScore | null;
+};
+
+type FootballDataScorePair = {
+  home?: number | string | null;
+  away?: number | string | null;
+  homeTeam?: number | string | null;
+  awayTeam?: number | string | null;
 };
 
 type FootballDataMatchesResponse = {
@@ -55,6 +64,7 @@ type MatchRecord = {
 };
 
 type UpsertResult = "created" | "updated";
+type AppResult = "home" | "draw" | "away" | null;
 
 function requiredEnv(name: string) {
   const value = process.env[name];
@@ -87,22 +97,82 @@ function capitalize(value: string) {
 }
 
 function appStatus(status: FootballDataMatch["status"]) {
-  if (status === "IN_PLAY" || status === "PAUSED") return "live";
-  if (status === "FINISHED" || status === "AWARDED") return "final";
-  return "scheduled";
+  switch (status) {
+    case "IN_PLAY":
+    case "PAUSED":
+    case "SUSPENDED":
+      return "live";
+    case "FINISHED":
+    case "AWARDED":
+      return "final";
+    case "SCHEDULED":
+    case "TIMED":
+    case "POSTPONED":
+    case "CANCELLED":
+      return "scheduled";
+  }
 }
 
-function appResult(match: FootballDataMatch) {
-  if (appStatus(match.status) !== "final") return "";
+function appResult(match: FootballDataMatch): AppResult {
+  if (appStatus(match.status) !== "final") return null;
 
-  if (match.score?.winner === "HOME_TEAM") return "home";
-  if (match.score?.winner === "AWAY_TEAM") return "away";
-  if (match.score?.winner === "DRAW") return "draw";
-  return "";
+  const winner = match.score?.winner?.toUpperCase();
+  if (winner === "HOME_TEAM" || winner === "HOME") return "home";
+  if (winner === "AWAY_TEAM" || winner === "AWAY") return "away";
+  if (winner === "DRAW") return "draw";
+
+  const [homeScore, awayScore] = matchScore(match);
+  if (!hasCompleteScore(homeScore, awayScore)) return null;
+  if (homeScore > awayScore) return "home";
+  if (awayScore > homeScore) return "away";
+  return "draw";
 }
 
-function scoreValue(value?: number | null) {
-  return typeof value === "number" ? value : null;
+function scoreValue(value?: number | string | null) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const score = Number(value);
+    if (Number.isFinite(score)) return score;
+  }
+
+  return null;
+}
+
+function scorePairValue(pair?: FootballDataScorePair | null): [number | null, number | null] {
+  if (!pair) return [null, null];
+
+  return [
+    scoreValue(pair.home ?? pair.homeTeam),
+    scoreValue(pair.away ?? pair.awayTeam),
+  ];
+}
+
+function hasCompleteScore(homeScore: number | null, awayScore: number | null) {
+  return homeScore !== null && awayScore !== null;
+}
+
+function isCompleteScorePair(pair: [number | null, number | null]): pair is [number, number] {
+  return hasCompleteScore(pair[0], pair[1]);
+}
+
+function matchScore(match: FootballDataMatch): [number | null, number | null] {
+  const score = match.score;
+  if (!score) return [null, null];
+
+  const candidates = [
+    score.fullTime,
+    score.regularTime,
+    score.extraTime,
+    score.penalties,
+    score.halfTime,
+  ];
+
+  for (const candidate of candidates) {
+    const pair = scorePairValue(candidate);
+    if (isCompleteScorePair(pair)) return pair;
+  }
+
+  return [null, null];
 }
 
 function normalizeTeamName(name?: string | null) {
@@ -112,6 +182,8 @@ function normalizeTeamName(name?: string | null) {
 }
 
 function matchPayload(match: FootballDataMatch) {
+  const [homeScore, awayScore] = matchScore(match);
+
   return {
     external_id: String(match.id),
     stage: stageLabel(match.stage),
@@ -125,8 +197,8 @@ function matchPayload(match: FootballDataMatch) {
     kickoff: match.utcDate,
     status: appStatus(match.status),
     result: appResult(match),
-    home_score: scoreValue(match.score?.fullTime?.home),
-    away_score: scoreValue(match.score?.fullTime?.away),
+    home_score: homeScore,
+    away_score: awayScore,
   };
 }
 
@@ -275,6 +347,19 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
   }
 
   if (existing) {
+    if (payload.status === "final") {
+      logger.log("Updating final football-data match", {
+        recordId: existing.id,
+        externalId: payload.external_id,
+        providerStatus: match.status,
+        providerWinner: match.score?.winner,
+        providerScore: match.score,
+        result: payload.result,
+        homeScore: payload.home_score,
+        awayScore: payload.away_score,
+      });
+    }
+
     try {
       await pb.collection("matches").update(existing.id, payload);
     } catch (err) {
@@ -306,7 +391,7 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
 export const syncWorldCupMatches = schedules.task({
   id: "sync-world-cup-matches",
   cron: {
-    pattern: "*/20 * * * *",
+    pattern: "*/10 * * * *",
     timezone: "UTC",
   },
   retry: {
