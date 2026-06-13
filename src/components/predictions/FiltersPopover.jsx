@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { flip, offset, shift, useFloating } from '@floating-ui/react'
 import { T } from 'gt-react'
 import { Filter } from 'lucide-react'
+import { useEffect } from 'react'
 
 function eventHitsNode(event, node) {
   if (!node) return false
@@ -21,20 +22,24 @@ export default function FiltersPopover({
   groupMode,
   onGroupModeChange,
 }) {
-  const popoverRef = useRef(null)
+  const { refs, floatingStyles } = useFloating({
+    placement: 'bottom-end',
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+  })
 
   useEffect(() => {
     if (!open) return undefined
 
     function closeOnOutsidePointer(event) {
-      if (eventHitsNode(event, popoverRef.current)) return
+      if (
+        eventHitsNode(event, refs.reference.current) ||
+        eventHitsNode(event, refs.floating.current)
+      ) return
       onOpenChange(false)
     }
 
     function closeOnEscape(event) {
-      if (event.key === 'Escape') {
-        onOpenChange(false)
-      }
+      if (event.key === 'Escape') onOpenChange(false)
     }
 
     document.addEventListener('pointerdown', closeOnOutsidePointer)
@@ -43,11 +48,12 @@ export default function FiltersPopover({
       document.removeEventListener('pointerdown', closeOnOutsidePointer)
       document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [open, onOpenChange])
+  }, [open, onOpenChange, refs])
 
   return (
-    <div ref={popoverRef} className="relative shrink-0">
+    <div className="shrink-0">
       <button
+        ref={refs.setReference}
         type="button"
         className="btn btn-soft btn-sm rounded-xl"
         onClick={() => onOpenChange(!open)}
@@ -58,7 +64,11 @@ export default function FiltersPopover({
         <Filter size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl">
+        <div
+          ref={refs.setFloating}
+          style={floatingStyles}
+          className="z-30 w-64 max-w-[calc(100vw-1rem)] rounded-box border border-base-300 bg-base-100 p-3 shadow-xl"
+        >
           <div className="space-y-2">
             <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
               <input

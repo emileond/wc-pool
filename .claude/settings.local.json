@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:upcode-worldcup.netlify.app)",
-      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in {**d.get\\(''''dependencies'''',{}\\), **d.get\\(''''devDependencies'''',{}\\)}.items\\(\\)}, indent=2\\)\\)\")"
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:v for k,v in {**d.get\\(''''dependencies'''',{}\\), **d.get\\(''''devDependencies'''',{}\\)}.items\\(\\)}, indent=2\\)\\)\")",
+      "Bash(npm install:*)"
     ]
   }
 }
