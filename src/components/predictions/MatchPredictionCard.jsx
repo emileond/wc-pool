@@ -122,8 +122,10 @@ function translateTeamName(name, gt) {
     return labels[name] || name
 }
 
-function StatusPill({match}) {
-    const gt = useGT()
+function StatusPill({match, prediction}) {
+    const isFinal = Boolean(match.result)
+    const hasPrediction = Boolean(prediction?.pick)
+    const pickIsCorrect = isFinal && hasPrediction && prediction.pick === match.result
 
     if (match.status === 'live') {
         return (
@@ -134,18 +136,31 @@ function StatusPill({match}) {
             </span>
         )
     }
-    if (match.result) {
-        const teamName = match.result === 'home' ? match.home : match.result === 'away' ? match.away : null
+    if (isFinal) {
+        if (!hasPrediction) {
+            return (
+                <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-base-300 bg-base-100 px-2.5 py-1 text-xs font-semibold text-base-content/55">
+                    <XCircle size={11}/>
+                    <T>No pick</T>
+                </span>
+            )
+        }
+
         return (
-            <span
-                className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
-                <CheckCircle2 size={11}/>
-                {teamName ? (
-                    <T><span><Var>{translateTeamName(teamName, gt)}</Var> won</span></T>
-                ) : (
-                    <T>Draw</T>
-                )}
-            </span>
+            pickIsCorrect ? (
+                <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2.5 py-1 text-xs font-bold text-success">
+                    <CheckCircle2 size={11}/>
+                    <T>Correct pick</T>
+                </span>
+            ) : (
+                <span
+                    className="inline-flex items-center gap-1.5 rounded-full border border-error/25 bg-error/10 px-2.5 py-1 text-xs font-bold text-error">
+                    <XCircle size={11}/>
+                    <T>Missed pick</T>
+                </span>
+            )
         )
     }
     return (
@@ -170,9 +185,7 @@ export default function MatchPredictionCard({
     const gt = useGT()
     const locked = isLocked(match)
     const hasPlaceholderTeam = hasTbdTeam(match)
-    const isFinal = Boolean(match.result)
     const showScore = hasMatchScore(match)
-    const pickIsCorrect = isFinal && prediction?.pick === match.result
 
     const pickOptions = [
         {pick: 'home', label: gt('Home'), name: translateTeamName(match.home, gt)},
@@ -190,7 +203,7 @@ export default function MatchPredictionCard({
             <div
                 className={`flex items-center gap-2 border-b border-base-300 bg-base-200/50 text-xs ${compact ? 'px-3 py-1.5' : 'px-4 py-2'}`}>
                 <span className="font-semibold text-base-content/50">{translateStageLabel(match.stage, gt)}</span>
-                <div className="ml-auto"><StatusPill match={match}/></div>
+                <div className="ml-auto"><StatusPill match={match} prediction={prediction}/></div>
             </div>
 
             <div className={compact ? 'p-3' : 'p-4'}>
@@ -270,28 +283,6 @@ export default function MatchPredictionCard({
 
                 <div
                     className={`flex items-center justify-between text-xs text-base-content/45 ${compact ? 'mt-2.5' : 'mt-3'}`}>
-                    <span className={`flex items-center gap-1.5 font-black ${
-                        isFinal && prediction ? (pickIsCorrect ? 'text-success' : 'text-error') : 'text-base-content/60'
-                    }`}>
-                        {isFinal && prediction && (pickIsCorrect ? <CheckCircle2 size={14}/> : <XCircle size={14}/>)}
-
-                        {!prediction ? (
-                            readOnly ? <T>No pick</T> : onShowAuth ? <T>Sign in to pick</T> : onShowJoin ?
-                                <T>Join to pick</T> : <T>No pick yet</T>
-                        ) : isFinal ? (
-                            pickIsCorrect
-                                ?
-                                <T context="Status of pick"><span>Correct pick: <Var>{selectedPickName}</Var></span></T>
-                                :
-                                <T context="Status of pick"><span>Missed pick: <Var>{selectedPickName}</Var></span></T>
-                        ) : (
-                            readOnly
-                                ?
-                                <T context="Status of pick"><span>Pick: <Var>{selectedPickName}</Var></span></T>
-                                :
-                                <T context="Status of pick"><span>Your pick: <Var>{selectedPickName}</Var></span></T>
-                        )}
-                    </span>
                     <span className="flex items-center gap-1">
                         {locked ? <Lock size={12}/> : <CheckCircle2 size={12}/>}
                         {locked ? gt('Locked') : gt('Open')}

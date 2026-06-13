@@ -46,7 +46,7 @@ export default function FiltersPopover({
   }, [open, onOpenChange])
 
   return (
-    <div ref={popoverRef} className="dropdown dropdown-end shrink-0">
+    <div ref={popoverRef} className="relative shrink-0">
       <button
         type="button"
         className="btn btn-soft btn-sm rounded-xl"
@@ -58,7 +58,7 @@ export default function FiltersPopover({
         <Filter size={16} />
       </button>
       {open && (
-        <div className="dropdown-content z-20 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl">
+        <div className="absolute right-0 top-full z-30 mt-2 w-64 rounded-box border border-base-300 bg-base-100 p-3 shadow-xl">
           <div className="space-y-2">
             <label className="label cursor-pointer justify-start gap-2 rounded-lg px-2 py-1.5">
               <input

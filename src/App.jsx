@@ -1,6 +1,6 @@
 import {useEffect, useMemo, useRef, useState} from 'react'
 import {useAutoAnimate} from '@formkit/auto-animate/react'
-import {GTProvider, LocaleSelector, T, Var} from 'gt-react'
+import {GTProvider, T, Var} from 'gt-react'
 import gtConfig from '../gt.config.json'
 import loadTranslations from './loadTranslations.ts'
 import {
@@ -10,12 +10,7 @@ import {
     CircleHelp,
     CircleDot,
     Lock,
-    LogOut,
-    Menu,
-    Monitor,
-    Moon,
     Sparkles,
-    Sun,
     Trophy,
     UserPlus,
     XCircle,
@@ -25,7 +20,6 @@ import {useLocation, useNavigate} from 'react-router-dom'
 import {pb} from './lib/pocketbase';
 import useWorkspaceData from './hooks/react-query/useWorkspaceData'
 import Panel from './components/shared/Panel'
-import PlayerAvatar from './components/shared/PlayerAvatar'
 import UserStatsCard from './components/sidebar/UserStatsCard'
 import PoolStatusCard from './components/sidebar/PoolStatusCard'
 import MatchPredictionCard from './components/predictions/MatchPredictionCard'
@@ -38,6 +32,7 @@ import ActivityFeedPage from './components/feed/ActivityFeedPage'
 import HomeLandingPage from './components/marketing/HomeLandingPage'
 import CreatePoolPage from './components/pools/CreatePoolPage'
 import MyPoolsPage from './components/pools/MyPoolsPage'
+import UserMenu from './components/shared/UserMenu'
 
 pb.autoCancellation(false)
 
@@ -819,18 +814,33 @@ function AppContent() {
         if (!normalizedName || !authUser) {
             throw new Error('Invalid pool name.')
         }
+        const authToken = pb.authStore.token
+        if (!authToken) {
+            throw new Error('Missing auth session.')
+        }
 
         setCreatingPool(true)
         try {
-            const workspace = await pb.collection('workspaces').create({name: normalizedName})
-            await pb.collection('memberships').create({
-                workspace: workspace.id,
-                user: authUser.id,
-                role: 'owner',
+            const response = await fetch('/api/pools/create', {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify({
+                    name: normalizedName,
+                    plan,
+                }),
             })
+
+            const payload = await response.json().catch(() => ({}))
+            if (!response.ok || !payload?.workspace?.id) {
+                throw new Error(payload?.error || payload?.message || 'Could not create pool.')
+            }
+
             await refreshUserPools()
             toast.success(`Pool "${normalizedName}" created (${plan === 'pro' ? 'Pro' : 'Free'}).`)
-            return normalizeWorkspace(workspace)
+            return normalizeWorkspace(payload.workspace)
         } catch (err) {
             toast.error(friendlyAuthError(err))
             throw err
@@ -991,13 +1001,11 @@ function AppContent() {
                             <div className="text-xs font-semibold uppercase tracking-widest text-base-content/55">Setup</div>
                             <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">Create Pool</h1>
                         </div>
-                        <HeaderUserMenu
+                        <UserMenu
                             player={player || authUser}
-                            workspace={{name: 'Create Pool'}}
                             themePreference={themePreference}
                             onThemeChange={changeThemePreference}
                             onLogin={() => openAuth('login')}
-                            onSignup={() => openAuth('signup')}
                             onLogout={logout}
                         />
                     </div>
@@ -1047,13 +1055,11 @@ function AppContent() {
                             <div className="text-xs font-semibold uppercase tracking-widest text-base-content/55">Account</div>
                             <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">My Pools</h1>
                         </div>
-                        <HeaderUserMenu
+                        <UserMenu
                             player={player || authUser}
-                            workspace={{name: 'My Pools'}}
                             themePreference={themePreference}
                             onThemeChange={changeThemePreference}
                             onLogin={() => openAuth('login')}
-                            onSignup={() => openAuth('signup')}
                             onLogout={logout}
                         />
                     </div>
@@ -1128,13 +1134,11 @@ function AppContent() {
                                 World Cup 2026
                             </h1>
                         </div>
-                        <HeaderUserMenu
+                        <UserMenu
                             player={player || authUser}
-                            workspace={activeWorkspace}
                             themePreference={themePreference}
                             onThemeChange={changeThemePreference}
                             onLogin={() => openAuth('login')}
-                            onSignup={() => openAuth('signup')}
                             onLogout={logout}
                         />
                     </div>
@@ -1200,7 +1204,6 @@ function AppContent() {
                         <PredictionsPage
                             matches={matches}
                             playerPredictions={playerPredictions}
-                            nowTime={now}
                             savingPick={savingPick} onPick={savePrediction}
                             onShowAuth={!authUser ? () => openAuth('signup') : null}
                             onShowJoin={canJoinWorkspace ? openJoinModal : null}
@@ -1349,143 +1352,6 @@ function NavButton({active, onClick, icon: Icon, children}) {
     )
 }
 
-function HeaderUserMenu({player, workspace, themePreference, onThemeChange, onLogin, onSignup, onLogout}) {
-    const [menuParent] = useAutoAnimate({duration: 160, easing: 'ease-out'})
-    const [menuOpen, setMenuOpen] = useState(false)
-    const menuRef = useRef(null)
-    const themeOptions = [
-        {value: 'system', label: 'System', icon: Monitor},
-        {value: 'light', label: 'Light', icon: Sun},
-        {value: 'dark', label: 'Dark', icon: Moon},
-    ]
-
-    useEffect(() => {
-        if (!menuOpen) return undefined
-
-        function closeOnOutsidePointer(event) {
-            if (!menuRef.current?.contains(event.target)) {
-                setMenuOpen(false)
-            }
-        }
-
-        function closeOnEscape(event) {
-            if (event.key === 'Escape') {
-                setMenuOpen(false)
-            }
-        }
-
-        document.addEventListener('mousedown', closeOnOutsidePointer)
-        document.addEventListener('touchstart', closeOnOutsidePointer)
-        document.addEventListener('keydown', closeOnEscape)
-        return () => {
-            document.removeEventListener('mousedown', closeOnOutsidePointer)
-            document.removeEventListener('touchstart', closeOnOutsidePointer)
-            document.removeEventListener('keydown', closeOnEscape)
-        }
-    }, [menuOpen])
-
-    return (
-        <div ref={menuRef} className="relative z-50 self-start">
-            <button
-                type="button"
-                onClick={() => setMenuOpen((open) => !open)}
-                aria-expanded={menuOpen}
-                aria-haspopup="menu"
-                className="btn btn-ghost h-auto min-h-0 rounded-full border border-base-content/10 bg-base-100/70 py-1 pl-1 pr-2.5 text-base-content shadow-xs hover:border-primary/25 hover:bg-base-100"
-            >
-                <PlayerAvatar name={player?.name || 'Guest'} size={32}/>
-                <span className="hidden max-w-40 truncate text-xs font-black normal-case sm:inline">
-          {player?.name || 'Guest'}
-        </span>
-                <Menu size={15} className="shrink-0 text-base-content/45"/>
-            </button>
-            {menuOpen && (
-                <ul
-                    ref={menuParent}
-                    className="menu absolute right-0 top-full z-50 mt-2 w-60 rounded-box border border-base-300 bg-base-100 p-2 text-base-content shadow-xl"
-                    role="menu"
-                >
-                    <li className="menu-title">
-                        <span className="truncate">{workspace?.name || <T>No workspace</T>}</span>
-                    </li>
-                    <li className="menu-title">
-                        <span className="truncate">{player?.name || <T>Guest</T>}</span>
-                    </li>
-                    <li className="menu-title mt-1">
-                        <span><T>Theme</T></span>
-                    </li>
-                    <li className="px-2 pb-1">
-                        <div className="flex items-center gap-2 rounded-lg bg-base-100 py-1.5">
-                            {themeOptions.map(({value, icon: Icon}) => (
-                                value === themePreference ?
-                                    <Icon key={value} size={15} className="shrink-0 text-base-content/50"/> : null
-                            ))}
-                            <select
-                                value={themePreference}
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={(event) => event.stopPropagation()}
-                                onChange={(event) => onThemeChange(event.target.value)}
-                                className="select select-bordered select-sm h-8 min-h-8 flex-1 bg-base-100 text-xs font-bold"
-                                aria-label="Theme"
-                            >
-                                {themeOptions.map(({value, label}) => (
-                                    <option key={value} value={value}>{label}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </li>
-                    <li className="menu-title mt-1">
-                        <span><T>Language</T></span>
-                    </li>
-                    <li className="px-2 pb-1">
-                        <div className="rounded-lg bg-base-100 px-1 py-1.5">
-                            <LocaleSelector/>
-                        </div>
-                    </li>
-                    {!player ? (
-                        <>
-                            <li>
-                                <button type="button" onClick={() => {
-                                    setMenuOpen(false);
-                                    onLogin()
-                                }}><T>Sign in</T></button>
-                            </li>
-                            <li>
-                                <button type="button" onClick={() => {
-                                    setMenuOpen(false);
-                                    onSignup()
-                                }}><T context="Sports prediction pool app">Join the pool</T></button>
-                            </li>
-                        </>
-                    ) : (
-                        <>
-                            <li>
-                                <a href="/create-pool" onClick={() => setMenuOpen(false)}>
-                                    <T>Create Pool</T>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="/pools" onClick={() => setMenuOpen(false)}>
-                                    <T>My Pools</T>
-                                </a>
-                            </li>
-                            <li>
-                                <button type="button" className="text-error" onClick={() => {
-                                    setMenuOpen(false);
-                                    onLogout()
-                                }}>
-                                    <LogOut size={16}/>
-                                    <T>Sign out</T>
-                                </button>
-                            </li>
-                        </>
-                    )}
-                </ul>
-            )}
-        </div>
-    )
-}
-
 function JoinWorkspaceCard({workspaceName, userName, onJoin}) {
     return (
         <Panel className="mb-5">
@@ -1541,7 +1407,7 @@ function MissingWorkspaceCard({workspaceName}) {
 // ===========================================================================
 // Predictions page
 // ===========================================================================
-function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPick, onShowAuth, onShowJoin}) {
+function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShowAuth, onShowJoin}) {
     const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
     const [showPastMatches, setShowPastMatches] = useState(false)
     const [showPredictedMatches, setShowPredictedMatches] = useState(true)
@@ -1558,7 +1424,7 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
     )
     const stageMatches = matches.filter((m) => m.stage === activeStageInfo.stage)
     const visibleMatches = stageMatches.filter((match) => {
-        const isPastMatch = new Date(match.kickoff).getTime() <= nowTime
+        const isPastMatch = match.status === 'final' || Boolean(match.result)
         const alreadyPicked = playerPredictions.has(match.id)
         if (!showPastMatches && isPastMatch) return false
         if (!showPredictedMatches && alreadyPicked) return false
@@ -1645,7 +1511,7 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                         points.</T></p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <div ref={scoringRef} className="dropdown dropdown-end shrink-0">
+                    <div ref={scoringRef} className="relative shrink-0">
                         <button
                             type="button"
                             className="btn btn-soft btn-sm rounded-xl"
@@ -1661,7 +1527,7 @@ function PredictionsPage({matches, playerPredictions, nowTime, savingPick, onPic
                         </button>
                         {scoringOpen && (
                             <div
-                                className="dropdown-content z-20 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl">
+                                className="absolute right-0 top-full z-30 mt-2 w-72 rounded-box border border-base-300 bg-base-100 p-4 shadow-xl">
                                 <h3 className="font-black"><T>Scoring system</T></h3>
                                 <ul className="mt-3 space-y-2 text-sm text-base-content/70">
                                     <li className="flex gap-2">

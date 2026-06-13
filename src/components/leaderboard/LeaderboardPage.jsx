@@ -36,8 +36,20 @@ function podiumMedalSrcForIndex(index) {
   return medalPaths[index] || ''
 }
 
-export default function LeaderboardPage({ leaderboard, matches, onOpenProfile }) {
+export default function LeaderboardPage({ leaderboard, matches, predictions = [], onOpenProfile }) {
   const playedGames = matches.filter((m) => m.status !== 'scheduled').length
+  const completedMatchIds = new Set(
+    matches
+      .filter((match) => match.status === 'final' || Boolean(match.result))
+      .map((match) => String(match.id)),
+  )
+  const completedPredictionsByPlayer = predictions.reduce((acc, prediction) => {
+    if (!completedMatchIds.has(String(prediction.match))) return acc
+    const playerId = String(prediction.player || '')
+    if (!playerId) return acc
+    acc.set(playerId, (acc.get(playerId) || 0) + 1)
+    return acc
+  }, new Map())
   const [leaderboardParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
 
   return (
@@ -69,8 +81,9 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
         ) : (
           <div ref={leaderboardParent} className="space-y-2">
             {leaderboard.map((player, index) => {
-              const accuracy = player.predictions > 0
-                ? Math.round((player.correct / player.predictions) * 100)
+              const completedPredictions = completedPredictionsByPlayer.get(leaderboardPlayerId(player)) || 0
+              const accuracy = completedPredictions > 0
+                ? Math.min(100, Math.round((player.correct / completedPredictions) * 100))
                 : 0
               const podiumStyle = podiumStyleForIndex(index)
 
@@ -100,7 +113,7 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                   <PlayerAvatar name={player.name} size={38} className="border border-white shadow-sm dark:border-white/20" />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
                       {onOpenProfile ? (
                         <PlayerNameHoverCard
                           playerId={leaderboardPlayerId(player)}
@@ -108,8 +121,9 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                           rank={index + 1}
                           points={player.points}
                           correct={player.correct}
-                          predictions={player.predictions}
+                          predictions={completedPredictions}
                           accuracy={accuracy}
+                          buttonClassName="block w-full"
                           onOpenProfile={onOpenProfile}
                         />
                       ) : (
@@ -124,7 +138,7 @@ export default function LeaderboardPage({ leaderboard, matches, onOpenProfile })
                         />
                       </div>
                       <span className="shrink-0 text-xs text-base-content/40">
-                        {player.correct}/{player.predictions}
+                        {player.correct}/{completedPredictions}
                       </span>
                     </div>
                   </div>
