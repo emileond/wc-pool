@@ -1,4 +1,5 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
+import { useMemo } from 'react'
 import { Activity, Trophy, Users } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
@@ -9,34 +10,43 @@ function leaderboardPlayerId(player) {
   return String(player.player || player.id || '')
 }
 
-function podiumStyleForIndex(index) {
-  const podium = [
-    {
+function podiumStyleForRank(rank) {
+  const podiumByRank = {
+    1: {
       row: 'border-yellow-300 bg-yellow-50 shadow-sm dark:border-yellow-500/35 dark:bg-yellow-500/12',
       rank: 'border-yellow-300 bg-yellow-400/20 text-yellow-700 dark:border-yellow-500/45 dark:bg-yellow-500/20 dark:text-yellow-200',
     },
-    {
+    2: {
       row: 'border-slate-300 bg-slate-100/80 shadow-sm dark:border-slate-400/30 dark:bg-slate-400/10',
       rank: 'border-slate-300 bg-slate-200 text-slate-600 dark:border-slate-400/40 dark:bg-slate-300/20 dark:text-slate-200',
     },
-    {
+    3: {
       row: 'border-orange-300 bg-orange-50 shadow-sm dark:border-orange-500/35 dark:bg-orange-500/12',
       rank: 'border-orange-300 bg-orange-200/70 text-orange-700 dark:border-orange-500/45 dark:bg-orange-500/20 dark:text-orange-200',
     },
-  ]
-  return podium[index]
+  }
+  return podiumByRank[rank]
 }
 
-function podiumMedalSrcForIndex(index) {
-  const medalPaths = [
-    '/medals/1st.png',
-    '/medals/2nd.png',
-    '/medals/3rd.png',
-  ]
-  return medalPaths[index] || ''
+function podiumMedalSrcForRank(rank) {
+  const medalPathsByRank = {
+    1: '/medals/1st.png',
+    2: '/medals/2nd.png',
+    3: '/medals/3rd.png',
+  }
+  return medalPathsByRank[rank] || ''
 }
 
 export default function LeaderboardPage({ leaderboard, matches, predictions = [], onOpenProfile }) {
+  const leaderboardWithRanks = useMemo(
+    () =>
+      leaderboard.map((player) => ({
+        player,
+        rank: leaderboard.findIndex((entry) => Number(entry.points) === Number(player.points)) + 1,
+      })),
+    [leaderboard],
+  )
+
   const playedGames = matches.filter((m) => m.status !== 'scheduled').length
   const completedMatchIds = new Set(
     matches
@@ -80,12 +90,12 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
           <div className="py-8 text-center text-sm font-semibold text-base-content/40"><T>No players yet.</T></div>
         ) : (
           <div ref={leaderboardParent} className="space-y-2">
-            {leaderboard.map((player, index) => {
+            {leaderboardWithRanks.map(({ player, rank }) => {
               const completedPredictions = completedPredictionsByPlayer.get(leaderboardPlayerId(player)) || 0
               const accuracy = completedPredictions > 0
                 ? Math.min(100, Math.round((player.correct / completedPredictions) * 100))
                 : 0
-              const podiumStyle = podiumStyleForIndex(index)
+              const podiumStyle = podiumStyleForRank(rank)
 
               return (
                 <div
@@ -94,11 +104,11 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
                     podiumStyle ? podiumStyle.row : 'border-base-200 hover:bg-base-200 hover:border-base-300'
                   }`}
                 >
-                  {podiumMedalSrcForIndex(index) ? (
+                  {podiumMedalSrcForRank(rank) ? (
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center">
                       <img
-                        src={podiumMedalSrcForIndex(index)}
-                        alt={`${index + 1} place`}
+                        src={podiumMedalSrcForRank(rank)}
+                        alt={`${rank} place`}
                         className="h-9 w-9 object-contain"
                       />
                     </div>
@@ -106,7 +116,7 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
                     <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-black ${
                       podiumStyle ? podiumStyle.rank : 'border-base-300 bg-base-100 text-base-content/80'
                     }`}>
-                      {index + 1}
+                      {rank}
                     </div>
                   )}
 
@@ -118,7 +128,7 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
                         <PlayerNameHoverCard
                           playerId={leaderboardPlayerId(player)}
                           name={player.name}
-                          rank={index + 1}
+                          rank={rank}
                           points={player.points}
                           correct={player.correct}
                           predictions={completedPredictions}

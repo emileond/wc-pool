@@ -1,6 +1,7 @@
 import {useMemo, useState} from 'react'
 import {CalendarClock, CheckCircle2, ChevronDown, Lock, XCircle} from 'lucide-react'
 import {T, useGT} from 'gt-react'
+import PlayerAvatar from '../shared/PlayerAvatar'
 
 function formatKickoff(value) {
     return new Intl.DateTimeFormat(undefined, {
@@ -346,9 +347,9 @@ export default function MatchPredictionCard({
                                         key={row.key}
                                         style={{width: `${row.percent}%`}}
                                         className={`h-full transition-all ${
-                                            row.key === 'home' ? 'bg-primary/85' :
-                                            row.key === 'draw' ? 'bg-base-content/30' :
-                                            'bg-secondary/85'
+                                            row.key === 'home' ? 'bg-primary/65' :
+                                            row.key === 'draw' ? 'bg-base-content/22' :
+                                            'bg-secondary/65'
                                         }`}
                                     />
                                 ) : null
@@ -360,9 +361,9 @@ export default function MatchPredictionCard({
                             {poolPickStats.rows.map((row) => (
                                 <div key={row.key} className="flex items-center gap-1">
                                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-                                        row.key === 'home' ? 'bg-primary/85' :
-                                        row.key === 'draw' ? 'bg-base-content/30' :
-                                        'bg-secondary/85'
+                                        row.key === 'home' ? 'bg-primary/65' :
+                                        row.key === 'draw' ? 'bg-base-content/22' :
+                                        'bg-secondary/65'
                                     }`}/>
                                     <span className="max-w-[5rem] truncate text-[10px] font-semibold text-base-content/50">
                                         {row.label}
@@ -395,10 +396,11 @@ export default function MatchPredictionCard({
                                     return (
                                         <li key={poolPick.id}
                                             className="flex items-center gap-2">
-                                            <div
-                                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-300 text-[10px] font-black text-base-content/65">
-                                                {poolPick.playerName?.slice(0, 1).toUpperCase() || '?'}
-                                            </div>
+                                            <PlayerAvatar
+                                                name={poolPick.playerName}
+                                                size={24}
+                                                className="border border-base-300/80"
+                                            />
                                             <span className="flex-1 truncate text-sm font-semibold text-base-content/75">
                                                 {poolPick.playerName}
                                             </span>
