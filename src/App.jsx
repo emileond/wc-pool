@@ -1201,6 +1201,8 @@ function AppContent() {
                     {activeWorkspace && activePage === 'predictions' && (
                         <PredictionsPage
                             matches={matches}
+                            predictions={effectiveData.predictions}
+                            players={effectiveData.players}
                             playerPredictions={playerPredictions}
                             savingPick={savingPick} onPick={savePrediction}
                             onShowAuth={!authUser ? () => openAuth('signup') : null}
@@ -1405,7 +1407,16 @@ function MissingWorkspaceCard({workspaceName}) {
 // ===========================================================================
 // Predictions page
 // ===========================================================================
-function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShowAuth, onShowJoin}) {
+function PredictionsPage({
+    matches,
+    predictions,
+    players,
+    playerPredictions,
+    savingPick,
+    onPick,
+    onShowAuth,
+    onShowJoin,
+}) {
     const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
     const [showPastMatches, setShowPastMatches] = useState(false)
     const [showPredictedMatches, setShowPredictedMatches] = useState(true)
@@ -1429,6 +1440,31 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
     })
 
     const inferredRounds = useMemo(() => inferGroupRounds(stageMatches), [stageMatches])
+    const playerNameById = useMemo(
+        () => new Map((players || []).map((poolPlayer) => [poolPlayer.id, poolPlayer.name || 'Player'])),
+        [players],
+    )
+    const picksByMatchId = useMemo(() => {
+        const grouped = new Map()
+        ;(predictions || []).forEach((poolPrediction) => {
+            if (!poolPrediction?.match || !poolPrediction?.pick) return
+            const existing = grouped.get(poolPrediction.match) || []
+            existing.push({
+                id: poolPrediction.id,
+                playerId: poolPrediction.player,
+                playerName: playerNameById.get(poolPrediction.player) || 'Player',
+                pick: poolPrediction.pick,
+                createdAt: poolPrediction.createdAt || '',
+            })
+            grouped.set(poolPrediction.match, existing)
+        })
+
+        grouped.forEach((matchPicks, matchId) => {
+            grouped.set(matchId, [...matchPicks].sort((a, b) => a.playerName.localeCompare(b.playerName)))
+        })
+
+        return grouped
+    }, [playerNameById, predictions])
 
     const groupedMatches = useMemo(() => {
         if (groupMode === 'none') return []
@@ -1556,6 +1592,7 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
                                                 key={match.id}
                                                 match={match}
                                                 prediction={playerPredictions.get(match.id)}
+                                                poolPicks={picksByMatchId.get(match.id) || []}
                                                 savingPick={savingPick}
                                                 onPick={onPick}
                                                 onShowAuth={onShowAuth}
@@ -1572,6 +1609,7 @@ function PredictionsPage({matches, playerPredictions, savingPick, onPick, onShow
                             key={match.id}
                             match={match}
                             prediction={playerPredictions.get(match.id)}
+                            poolPicks={picksByMatchId.get(match.id) || []}
                             savingPick={savingPick}
                             onPick={onPick}
                             onShowAuth={onShowAuth}

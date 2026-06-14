@@ -1,5 +1,6 @@
-import {CalendarClock, CheckCircle2, Lock, XCircle} from 'lucide-react'
-import {T, useGT, Var} from 'gt-react'
+import {useMemo, useState} from 'react'
+import {CalendarClock, CheckCircle2, ChevronDown, Lock, XCircle} from 'lucide-react'
+import {T, useGT} from 'gt-react'
 
 function formatKickoff(value) {
     return new Intl.DateTimeFormat(undefined, {
@@ -175,6 +176,7 @@ function StatusPill({match, prediction}) {
 export default function MatchPredictionCard({
                                                 match,
                                                 prediction,
+                                                poolPicks = [],
                                                 savingPick,
                                                 onPick,
                                                 onShowAuth,
@@ -186,6 +188,7 @@ export default function MatchPredictionCard({
     const locked = isLocked(match)
     const hasPlaceholderTeam = hasTbdTeam(match)
     const showScore = hasMatchScore(match)
+    const [showPicksList, setShowPicksList] = useState(false)
 
     const pickOptions = [
         {pick: 'home', label: gt('Home'), name: translateTeamName(match.home, gt)},
@@ -193,9 +196,33 @@ export default function MatchPredictionCard({
         {pick: 'away', label: gt('Away'), name: translateTeamName(match.away, gt)},
     ]
 
-    const selectedPickName = prediction?.pick === 'draw'
-        ? gt('Draw')
-        : translateTeamName(getPickTeamName(match, prediction?.pick), gt)
+    const poolPickStats = useMemo(() => {
+        const counts = {home: 0, draw: 0, away: 0}
+        poolPicks.forEach((poolPick) => {
+            if (poolPick.pick === 'home' || poolPick.pick === 'draw' || poolPick.pick === 'away') {
+                counts[poolPick.pick] += 1
+            }
+        })
+        const total = counts.home + counts.draw + counts.away
+        const percentage = (count) => (total > 0 ? Math.round((count / total) * 100) : 0)
+
+        return {
+            total,
+            rows: [
+                {
+                    key: 'home',
+                    label: translateTeamName(match.home, gt),
+                    percent: percentage(counts.home),
+                },
+                {key: 'draw', label: gt('Draw'), percent: percentage(counts.draw)},
+                {
+                    key: 'away',
+                    label: translateTeamName(match.away, gt),
+                    percent: percentage(counts.away),
+                },
+            ],
+        }
+    }, [gt, match.away, match.home, poolPicks])
 
     return (
         <article
@@ -258,6 +285,16 @@ export default function MatchPredictionCard({
                             }
                             if (onPick) onPick(match, pick)
                         }
+                        const activeClass = pick === 'home'
+                            ? 'border-primary/50 bg-primary/85 text-primary-content'
+                            : pick === 'draw'
+                                ? 'border-base-content/20 bg-base-content/15 text-base-content'
+                                : 'border-secondary/50 bg-secondary/85 text-secondary-content'
+                        const hoverClass = pick === 'home'
+                            ? 'hover:border-primary/40 hover:bg-primary/8 hover:text-primary'
+                            : pick === 'draw'
+                                ? 'hover:border-base-content/20 hover:bg-base-content/8 hover:text-base-content/80'
+                                : 'hover:border-secondary/40 hover:bg-secondary/8 hover:text-secondary'
                         return (
                             <button
                                 key={pick}
@@ -266,8 +303,8 @@ export default function MatchPredictionCard({
                                 onClick={handleClick}
                                 className={`${readOnly ? 'cursor-default' : 'cursor-pointer'} rounded-xl border px-2 text-center transition-all disabled:cursor-not-allowed disabled:opacity-40 ${compact ? 'py-2.5' : 'py-3'} ${
                                     active
-                                        ? 'border-primary/50 bg-primary/85 text-primary-content'
-                                        : 'border-base-300 bg-base-100 hover:border-primary/40 hover:bg-primary/5 hover:text-primary'
+                                        ? activeClass
+                                        : `border-base-300 bg-base-100 ${hoverClass}`
                                 }`}
                             >
                                 <div className="mb-1 text-xs font-bold uppercase tracking-wide opacity-60">
@@ -279,6 +316,101 @@ export default function MatchPredictionCard({
                             </button>
                         )
                     })}
+                </div>
+
+                <div className={`${compact ? 'mt-2.5' : 'mt-3'}`}>
+                    <button
+                        type="button"
+                        onClick={() => setShowPicksList((open) => !open)}
+                        aria-expanded={showPicksList}
+                        className="group w-full cursor-pointer rounded-lg p-1.5 -mx-1.5 transition-colors hover:bg-base-200/60"
+                    >
+                        <div className="flex items-center gap-1.5 mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-base-content/40">
+                                <T>Pool picks</T>
+                            </span>
+                            <span className="text-[10px] font-semibold text-base-content/35">
+                                · {poolPickStats.total}
+                            </span>
+                            <ChevronDown
+                                size={11}
+                                className={`ml-auto text-base-content/35 transition-transform ${showPicksList ? 'rotate-180' : ''}`}
+                            />
+                        </div>
+
+                        {/* Stacked horizontal bar */}
+                        <div className="flex h-2 overflow-hidden rounded-full bg-base-200">
+                            {poolPickStats.rows.map((row) =>
+                                row.percent > 0 ? (
+                                    <div
+                                        key={row.key}
+                                        style={{width: `${row.percent}%`}}
+                                        className={`h-full transition-all ${
+                                            row.key === 'home' ? 'bg-primary/85' :
+                                            row.key === 'draw' ? 'bg-base-content/30' :
+                                            'bg-secondary/85'
+                                        }`}
+                                    />
+                                ) : null
+                            )}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                            {poolPickStats.rows.map((row) => (
+                                <div key={row.key} className="flex items-center gap-1">
+                                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                                        row.key === 'home' ? 'bg-primary/85' :
+                                        row.key === 'draw' ? 'bg-base-content/30' :
+                                        'bg-secondary/85'
+                                    }`}/>
+                                    <span className="max-w-[5rem] truncate text-[10px] font-semibold text-base-content/50">
+                                        {row.label}
+                                    </span>
+                                    <span className="text-[10px] font-black tabular-nums text-base-content/40">
+                                        {row.percent}%
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </button>
+
+                    {/* Expanded player list */}
+                    {showPicksList && (
+                        <ul className="mt-2.5 space-y-1.5">
+                            {poolPicks.length === 0 ? (
+                                <p className="text-xs font-semibold text-base-content/45">
+                                    <T>No picks yet.</T>
+                                </p>
+                            ) : (
+                                poolPicks.map((poolPick) => {
+                                    const pickName = poolPick.pick === 'draw'
+                                        ? gt('Draw')
+                                        : translateTeamName(getPickTeamName(match, poolPick.pick), gt)
+                                    const chipStyle = poolPick.pick === 'home'
+                                        ? 'border-primary/30 bg-primary/10 text-primary'
+                                        : poolPick.pick === 'draw'
+                                            ? 'border-base-content/20 bg-base-content/8 text-base-content/60'
+                                            : 'border-secondary/30 bg-secondary/10 text-secondary'
+                                    return (
+                                        <li key={poolPick.id}
+                                            className="flex items-center gap-2">
+                                            <div
+                                                className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-base-300 text-[10px] font-black text-base-content/65">
+                                                {poolPick.playerName?.slice(0, 1).toUpperCase() || '?'}
+                                            </div>
+                                            <span className="flex-1 truncate text-sm font-semibold text-base-content/75">
+                                                {poolPick.playerName}
+                                            </span>
+                                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${chipStyle}`}>
+                                                {pickName}
+                                            </span>
+                                        </li>
+                                    )
+                                })
+                            )}
+                        </ul>
+                    )}
                 </div>
 
                 <div
