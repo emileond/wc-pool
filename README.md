@@ -70,6 +70,7 @@ CREATE UNIQUE INDEX idx_memberships_workspace_user ON memberships (workspace, us
 - `away_crest` url
 - `venue` text
 - `kickoff` date, required
+- `minute` number (optional, live minute from football-data.org)
 - `status` select: `scheduled`, `live`, `final`
 - `result` select: empty, `home`, `draw`, `away`
 - `home_score` number
@@ -181,6 +182,8 @@ It upserts PocketBase `matches` by `external_id`, which is the football-data.org
 The sync stores team crests from football-data.org `homeTeam.crest` and `awayTeam.crest` into `matches.home_crest` and `matches.away_crest`.
 
 The sync stores football-data.org `matchday` into `matches.matchday` (optional). This is used by the UI to group group-stage fixtures by 1st/2nd/3rd round.
+
+The sync stores football-data.org `minute` into `matches.minute` (optional). Live matches include this value and the UI uses it directly for the in-match clock label.
 
 The sync stores the final score from football-data.org `score.fullTime.home` and `score.fullTime.away` into `matches.home_score` and `matches.away_score`. Keep both score fields optional because upcoming fixtures return `null` scores.
 

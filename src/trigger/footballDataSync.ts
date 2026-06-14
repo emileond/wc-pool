@@ -26,6 +26,7 @@ type FootballDataScore = {
 type FootballDataMatch = {
     id: number;
     utcDate: string;
+    minute?: number | null;
     status:
         | "SCHEDULED"
         | "TIMED"
@@ -183,6 +184,10 @@ function normalizeTeamName(name?: string | null) {
 
 function matchPayload(match: FootballDataMatch) {
     const [homeScore, awayScore] = matchScore(match);
+    const minute =
+        typeof match.minute === "number" && Number.isFinite(match.minute)
+            ? Math.max(0, Math.floor(match.minute))
+            : null;
 
     return {
         external_id: String(match.id),
@@ -195,6 +200,7 @@ function matchPayload(match: FootballDataMatch) {
         away_crest: match.awayTeam.crest || "",
         venue: match.venue || "",
         kickoff: match.utcDate,
+        minute,
         status: appStatus(match.status),
         result: appResult(match),
         home_score: homeScore,
@@ -320,6 +326,34 @@ async function fetchWorldCupMatches() {
         throw new Error("football-data.org returned 0 World Cup matches; refusing to mark sync as successful");
     }
 
+    const liveMatches = data.matches.filter(
+        (match) => match.status === "IN_PLAY" || match.status === "PAUSED" || match.status === "SUSPENDED",
+    );
+    const matchesWithMinute = data.matches.filter(
+        (match) => match.minute !== null && match.minute !== undefined,
+    );
+    const minuteTypeCounts = data.matches.reduce<Record<string, number>>((acc, match) => {
+        const type = match.minute === null ? "null" : typeof match.minute;
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+    }, {});
+
+    logger.log("football-data minute diagnostics", {
+        fetched: data.matches.length,
+        liveMatches: liveMatches.length,
+        matchesWithMinute: matchesWithMinute.length,
+        minuteTypeCounts,
+        liveSample: liveMatches.slice(0, 3).map((match) => ({
+            id: match.id,
+            status: match.status,
+            minute: match.minute,
+            minuteType: typeof match.minute,
+            utcDate: match.utcDate,
+            lastUpdated: match.lastUpdated,
+        })),
+        responseSample: (liveMatches.length ? liveMatches : data.matches).slice(0, 1),
+    });
+
     return data.matches;
 }
 
@@ -347,6 +381,16 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
     }
 
     if (existing) {
+        if (payload.status === "live") {
+            logger.log("Updating live football-data match minute", {
+                recordId: existing.id,
+                externalId: payload.external_id,
+                providerStatus: match.status,
+                providerMinute: match.minute,
+                providerMinuteType: typeof match.minute,
+                payloadMinute: payload.minute,
+            });
+        }
         if (payload.status === "final") {
             logger.log("Updating final football-data match", {
                 recordId: existing.id,
@@ -375,6 +419,15 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
     }
 
     try {
+        if (payload.status === "live") {
+            logger.log("Creating live football-data match minute", {
+                externalId: payload.external_id,
+                providerStatus: match.status,
+                providerMinute: match.minute,
+                providerMinuteType: typeof match.minute,
+                payloadMinute: payload.minute,
+            });
+        }
         await pb.collection("matches").create(payload);
     } catch (err) {
         logger.error("PocketBase match create failed", {

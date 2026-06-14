@@ -25,6 +25,21 @@ function hasMatchScore(match) {
     return match.status !== 'scheduled' && Number.isFinite(match.homeScore) && Number.isFinite(match.awayScore)
 }
 
+function isMatchFinal(match) {
+    return match.status === 'final' || Boolean(match.result)
+}
+
+function getMatchTimeLabel(match) {
+    if (match.status === 'live') {
+        if (Number.isFinite(Number(match.minute))) {
+            return `${Math.max(0, Math.floor(Number(match.minute)))}'`
+        }
+        return '-'
+    }
+    if (isMatchFinal(match)) return 'FT'
+    return '-'
+}
+
 function hasTbdTeam(match) {
     const isTbd = (team) => typeof team === 'string' && team.trim().toUpperCase() === 'TBD'
     return isTbd(match.home) || isTbd(match.away)
@@ -132,8 +147,8 @@ function StatusPill({match, prediction}) {
     if (match.status === 'live') {
         return (
             <span
-                className="inline-flex items-center gap-1.5 rounded-full border border-error/25 bg-error/10 px-2.5 py-1 text-xs font-bold text-error">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-error"/>
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-200/15 px-2.5 py-1 text-xs font-bold dark:border-emerald-400/30 dark:bg-emerald-400/12 text-success">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"/>
                 <T>Live</T>
             </span>
         )
@@ -189,6 +204,7 @@ export default function MatchPredictionCard({
     const locked = isLocked(match)
     const hasPlaceholderTeam = hasTbdTeam(match)
     const showScore = hasMatchScore(match)
+    const matchTimeLabel = getMatchTimeLabel(match)
     const [showPicksList, setShowPicksList] = useState(false)
 
     const pickOptions = [
@@ -242,7 +258,11 @@ export default function MatchPredictionCard({
                             {translateTeamName(match.home, gt)}
                         </div>
                     </div>
-                    <div className="flex items-center justify-center">
+                    <div className="flex flex-col items-center justify-center gap-1">
+                        <span
+                            className="text-[10px] font-bold tabular-nums uppercase tracking-wide text-base-content/45">
+                            {matchTimeLabel}
+                        </span>
                         {showScore ? (
                             <span
                                 className={`rounded-xl border border-base-300 bg-base-200 font-black text-base-content ${compact ? 'px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-base'}`}>
@@ -348,8 +368,8 @@ export default function MatchPredictionCard({
                                         style={{width: `${row.percent}%`}}
                                         className={`h-full transition-all ${
                                             row.key === 'home' ? 'bg-primary/65' :
-                                            row.key === 'draw' ? 'bg-base-content/22' :
-                                            'bg-secondary/65'
+                                                row.key === 'draw' ? 'bg-base-content/22' :
+                                                    'bg-secondary/65'
                                         }`}
                                     />
                                 ) : null
@@ -362,10 +382,11 @@ export default function MatchPredictionCard({
                                 <div key={row.key} className="flex items-center gap-1">
                                     <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                                         row.key === 'home' ? 'bg-primary/65' :
-                                        row.key === 'draw' ? 'bg-base-content/22' :
-                                        'bg-secondary/65'
+                                            row.key === 'draw' ? 'bg-base-content/22' :
+                                                'bg-secondary/65'
                                     }`}/>
-                                    <span className="max-w-[5rem] truncate text-[10px] font-semibold text-base-content/50">
+                                    <span
+                                        className="max-w-[5rem] truncate text-[10px] font-semibold text-base-content/50">
                                         {row.label}
                                     </span>
                                     <span className="text-[10px] font-black tabular-nums text-base-content/40">
@@ -401,10 +422,12 @@ export default function MatchPredictionCard({
                                                 size={24}
                                                 className="border border-base-300/80"
                                             />
-                                            <span className="flex-1 truncate text-sm font-semibold text-base-content/75">
+                                            <span
+                                                className="flex-1 truncate text-sm font-semibold text-base-content/75">
                                                 {poolPick.playerName}
                                             </span>
-                                            <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${chipStyle}`}>
+                                            <span
+                                                className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold ${chipStyle}`}>
                                                 {pickName}
                                             </span>
                                         </li>

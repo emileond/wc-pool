@@ -55,6 +55,7 @@ pb.autoCancellation(false)
 //    - external_id (text, unique; football-data.org match id)
 //    - stage, group, home, away, venue, kickoff, status, result
 //    - matchday (number, optional; group-stage round from football-data.org)
+//    - minute (number, optional; live match minute from football-data.org)
 //    - home_crest, away_crest (url; synced from team crest)
 //    - home_score, away_score (number; synced from score.fullTime)
 //
@@ -152,6 +153,7 @@ function normalizeMatch(record) {
         venue: record.venue || '',
         kickoff: record.kickoff,
         matchday: optionalInteger(record.matchday),
+        minute: optionalInteger(record.minute),
         status: record.status || 'scheduled',
         result: record.result || '',
         homeScore: optionalScore(record.home_score),
