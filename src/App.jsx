@@ -69,6 +69,9 @@ pb.autoCancellation(false)
 //  leaderboard
 //    - workspace   (relation → workspaces)
 //    - user        (relation → users)
+//    - scope_type  (text/select: "overall" | "stage" | "group-round")
+//    - scope_value (text; empty string for overall)
+//    - scope_label (text)
 //    - name        (text)
 //    - points      (number)
 //    - correct     (number)
@@ -228,6 +231,9 @@ function normalizeLeaderboard(record) {
         id: record.id,
         player: typeof user === 'string' ? user : user?.id || record.id,
         workspace: relationId(record.workspace),
+        scopeType: record.scope_type || 'overall',
+        scopeValue: record.scope_value || '',
+        scopeLabel: record.scope_label || 'All tournament',
         name: record.name || userDisplayName(user),
         points: Number(record.points) || 0,
         correct: Number(record.correct) || 0,
@@ -448,9 +454,16 @@ async function loadWorkspacePredictions(workspaceId) {
     return loadPocketBaseCollection('predictions', {filter: workspaceFilter, sort: 'created'}, normalizePrediction)
 }
 
-async function loadWorkspaceLeaderboard(workspaceId) {
+async function loadWorkspaceLeaderboard(workspaceId, scope = {type: 'overall', value: ''}) {
     const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
-    return loadPocketBaseCollection('leaderboard', {filter: workspaceFilter, sort: 'rank'}, normalizeLeaderboard)
+    const scopeType = scope?.type || 'overall'
+    const scopeValue = scope?.value || ''
+    const filter = [
+        workspaceFilter,
+        `scope_type="${escapePbFilterValue(scopeType)}"`,
+        `scope_value="${escapePbFilterValue(scopeValue)}"`,
+    ].join(' && ')
+    return loadPocketBaseCollection('leaderboard', {filter, sort: 'rank'}, normalizeLeaderboard)
 }
 
 async function loadWorkspaceActivityEvents(workspaceId, {page = 1, perPage = ACTIVITY_PAGE_SIZE} = {}) {
@@ -1288,9 +1301,10 @@ function AppContent() {
                             />
                         ) : (
                             <LeaderboardPage
+                                workspaceId={activeWorkspace.id}
                                 leaderboard={leaderboard}
                                 matches={matches}
-                                predictions={effectiveData.predictions}
+                                loadWorkspaceLeaderboard={loadWorkspaceLeaderboard}
                                 onOpenProfile={(selectedPlayerId) => {
                                     navigate(
                                         leaderboardProfilePath(workspaceName, selectedPlayerId),

@@ -348,7 +348,7 @@ export default function MatchPredictionCard({
                     >
                         <div className="flex items-center gap-1.5 mb-2">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-base-content/40">
-                                <T>Pool picks</T>
+                                <T context="sports prediction pool">Picks</T>
                             </span>
                             <span className="text-[10px] font-semibold text-base-content/35">
                                 · {poolPickStats.total}

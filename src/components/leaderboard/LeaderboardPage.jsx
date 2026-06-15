@@ -1,5 +1,6 @@
 import { useAutoAnimate } from '@formkit/auto-animate/react'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Activity, Trophy, Users } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
@@ -37,43 +38,153 @@ function podiumMedalSrcForRank(rank) {
   return medalPathsByRank[rank] || ''
 }
 
-export default function LeaderboardPage({ leaderboard, matches, predictions = [], onOpenProfile }) {
-  const leaderboardWithRanks = useMemo(
-    () =>
-      leaderboard.map((player) => ({
-        player,
-        rank: leaderboard.findIndex((entry) => Number(entry.points) === Number(player.points)) + 1,
-      })),
-    [leaderboard],
+function ordinal(value) {
+  const mod10 = value % 10
+  const mod100 = value % 100
+  if (mod10 === 1 && mod100 !== 11) return `${value}st`
+  if (mod10 === 2 && mod100 !== 12) return `${value}nd`
+  if (mod10 === 3 && mod100 !== 13) return `${value}rd`
+  return `${value}th`
+}
+
+function rankRows(rows) {
+  return rows.map((player) => ({
+    player,
+    rank: rows.findIndex((entry) => Number(entry.points) === Number(player.points)) + 1,
+  }))
+}
+
+function matchStage(match) {
+  return match.stage || 'Group Stage'
+}
+
+function inferGroupRounds(matches) {
+  const byGroup = new Map()
+  matches.forEach((match) => {
+    if (matchStage(match) !== 'Group Stage') return
+    const groupKey = match.group || 'Ungrouped'
+    if (!byGroup.has(groupKey)) byGroup.set(groupKey, [])
+    byGroup.get(groupKey).push(match)
+  })
+
+  const rounds = new Map()
+  byGroup.forEach((groupMatches) => {
+    const ordered = [...groupMatches].sort((a, b) => {
+      const kickoffDiff = new Date(a.kickoff) - new Date(b.kickoff)
+      if (kickoffDiff !== 0) return kickoffDiff
+      return String(a.id).localeCompare(String(b.id))
+    })
+    ordered.forEach((match, index) => {
+      rounds.set(match.id, Math.floor(index / 2) + 1)
+    })
+  })
+
+  return rounds
+}
+
+function scopeKey(scope) {
+  return `${scope.type}:${scope.value}`
+}
+
+function leaderboardScopeOptions(matches) {
+  const options = [{
+    type: 'overall',
+    value: '',
+    label: 'All tournament',
+    matches,
+  }]
+
+  Array.from(new Set(matches.map(matchStage))).forEach((stage) => {
+    options.push({
+      type: 'stage',
+      value: stage,
+      label: stage,
+      matches: matches.filter((match) => matchStage(match) === stage),
+    })
+  })
+
+  const inferredRounds = inferGroupRounds(matches)
+  const groupRounds = new Map()
+  matches.forEach((match) => {
+    if (matchStage(match) !== 'Group Stage') return
+    const roundNumber = match.matchday || inferredRounds.get(match.id)
+    if (!roundNumber) return
+    const roundMatches = groupRounds.get(roundNumber) || []
+    roundMatches.push(match)
+    groupRounds.set(roundNumber, roundMatches)
+  })
+
+  Array.from(groupRounds.entries())
+    .sort(([a], [b]) => a - b)
+    .forEach(([roundNumber, roundMatches]) => {
+      options.push({
+        type: 'group-round',
+        value: String(roundNumber),
+        label: `Group Stage - ${ordinal(roundNumber)} round`,
+        matches: roundMatches,
+      })
+    })
+
+  return options
+}
+
+export default function LeaderboardPage({
+  workspaceId,
+  leaderboard,
+  matches,
+  loadWorkspaceLeaderboard,
+  onOpenProfile,
+}) {
+  const [selectedScopeKey, setSelectedScopeKey] = useState('overall:')
+  const scopeOptions = useMemo(() => leaderboardScopeOptions(matches), [matches])
+  const selectedScope = scopeOptions.find((scope) => scopeKey(scope) === selectedScopeKey) || scopeOptions[0]
+  const scopedLeaderboardQuery = useQuery({
+    queryKey: ['workspace-leaderboard', workspaceId || 'none', selectedScope.type, selectedScope.value],
+    enabled: Boolean(workspaceId && loadWorkspaceLeaderboard && selectedScope.type !== 'overall'),
+    queryFn: () => loadWorkspaceLeaderboard(workspaceId, selectedScope),
+    staleTime: 15000,
+  })
+
+  const leaderboardRows = useMemo(
+    () => (selectedScope.type === 'overall' ? leaderboard : scopedLeaderboardQuery.data || []),
+    [leaderboard, scopedLeaderboardQuery.data, selectedScope.type],
   )
 
-  const playedGames = matches.filter((m) => m.status !== 'scheduled').length
-  const completedMatchIds = new Set(
-    matches
-      .filter((match) => match.status === 'final' || Boolean(match.result))
-      .map((match) => String(match.id)),
+  const leaderboardWithRanks = useMemo(
+    () => rankRows(leaderboardRows),
+    [leaderboardRows],
   )
-  const completedPredictionsByPlayer = predictions.reduce((acc, prediction) => {
-    if (!completedMatchIds.has(String(prediction.match))) return acc
-    const playerId = String(prediction.player || '')
-    if (!playerId) return acc
-    acc.set(playerId, (acc.get(playerId) || 0) + 1)
-    return acc
-  }, new Map())
+  const playedGames = selectedScope.matches.filter((m) => m.status !== 'scheduled').length
   const [leaderboardParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-2xl font-black sm:text-3xl"><T>Leaderboard</T></h2>
-        <p className="mt-0.5 text-sm text-base-content/60"><T>Updates live as match results are posted.</T></p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 className="text-2xl font-black sm:text-3xl"><T>Leaderboard</T></h2>
+          <p className="mt-0.5 text-sm text-base-content/60"><T>Updates live as match results are posted.</T></p>
+        </div>
+        <label className="w-full sm:w-56">
+          <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-base-content/45">
+            <T>Stage</T>
+          </span>
+          <select
+            className="select select-bordered w-full rounded-xl font-semibold"
+            value={selectedScopeKey}
+            onChange={(event) => setSelectedScopeKey(event.target.value)}
+          >
+            {scopeOptions.map((scope) => (
+              <option key={scopeKey(scope)} value={scopeKey(scope)}>{scope.label}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Users, key: 'players', value: leaderboard.length, label: <T>Players</T> },
+          { icon: Users, key: 'players', value: leaderboardRows.length, label: <T>Players</T> },
           { icon: Activity, key: 'played-games', value: playedGames, label: <T context="Played games on a sports prediction pool">Played</T> },
-          { icon: Trophy, key: 'total-games', value: matches.length, label: <T>Total</T> },
+          { icon: Trophy, key: 'total-games', value: selectedScope.matches.length, label: <T>Total</T> },
         ].map(({ icon: Icon, key, label, value }) => (
           <Panel key={key}>
             <div className="mb-1 flex items-center gap-1.5 text-primary">
@@ -86,15 +197,21 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
       </div>
 
       <Panel>
-        {leaderboard.length === 0 ? (
+        {scopedLeaderboardQuery.isLoading ? (
+          <div className="py-8 text-center">
+            <span className="loading loading-dots loading-md text-base-content/40" />
+          </div>
+        ) : scopedLeaderboardQuery.error ? (
+          <div className="py-8 text-center text-sm font-semibold text-base-content/40">
+            <T>Could not load this leaderboard.</T>
+          </div>
+        ) : leaderboardRows.length === 0 ? (
           <div className="py-8 text-center text-sm font-semibold text-base-content/40"><T>No players yet.</T></div>
         ) : (
           <div ref={leaderboardParent} className="space-y-2">
             {leaderboardWithRanks.map(({ player, rank }) => {
-              const completedPredictions = completedPredictionsByPlayer.get(leaderboardPlayerId(player)) || 0
-              const accuracy = completedPredictions > 0
-                ? Math.min(100, Math.round((player.correct / completedPredictions) * 100))
-                : 0
+              const predictionsCount = Number(player.predictions) || 0
+              const accuracy = Number(player.accuracy) || 0
               const podiumStyle = podiumStyleForRank(rank)
 
               return (
@@ -131,7 +248,7 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
                           rank={rank}
                           points={player.points}
                           correct={player.correct}
-                          predictions={completedPredictions}
+                          predictions={predictionsCount}
                           accuracy={accuracy}
                           buttonClassName="block w-full"
                           onOpenProfile={onOpenProfile}
@@ -148,7 +265,7 @@ export default function LeaderboardPage({ leaderboard, matches, predictions = []
                         />
                       </div>
                       <span className="shrink-0 text-xs text-base-content/40">
-                        {player.correct}/{completedPredictions}
+                        {player.correct}/{predictionsCount}
                       </span>
                     </div>
                   </div>

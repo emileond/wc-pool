@@ -93,6 +93,9 @@ CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspa
 
 - `workspace` relation to `workspaces`, required
 - `user` relation to `users`, required
+- `scope_type` select: `overall`, `stage`, `group-round`, required
+- `scope_value` text; use an empty string for `overall`, the stage name for `stage`, and the round number for `group-round`
+- `scope_label` text, required; display label such as `All tournament`, `Round of 16`, or `Group Stage - 1st round`
 - `name` text, required
 - `points` number
 - `correct` number
@@ -101,11 +104,25 @@ CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspa
 - `rank` number
 - `previous_rank` number (required for activity feed rank-climb events)
 
-Add a unique index for one leaderboard row per user per workspace:
+Add a unique index for one leaderboard row per user per workspace scope:
 
 ```sql
-CREATE UNIQUE INDEX idx_leaderboard_workspace_user ON leaderboard (workspace, user);
+CREATE UNIQUE INDEX idx_leaderboard_workspace_scope_user ON leaderboard (workspace, scope_type, scope_value, user);
 ```
+
+If you already created the old one-row-per-user index, remove it before adding scoped rows:
+
+```sql
+DROP INDEX IF EXISTS idx_leaderboard_workspace_user;
+```
+
+Migration order for existing leaderboard data:
+
+1. Add the `scope_type`, `scope_value`, and `scope_label` fields to `leaderboard`.
+2. Run the one-time Trigger.dev task `backfill-leaderboard-overall-scope`. It sets existing rows to `scope_type = "overall"`, `scope_value = ""`, and `scope_label = "All tournament"`.
+3. Drop the old `idx_leaderboard_workspace_user` index.
+4. Add `idx_leaderboard_workspace_scope_user`.
+5. Run `sync-leaderboard` once to generate the stage and group-round rows.
 
 ### activity_events
 
@@ -268,17 +285,23 @@ The sync intentionally fails the Trigger.dev run if football-data.org cannot be 
 
 ## Leaderboard Storage
 
-The leaderboard is stored in the `leaderboard` collection and loaded directly by the app. Rows are scoped by `workspace`, and Trigger.dev keeps each workspace updated in two ways:
+The leaderboard is stored in the `leaderboard` collection and loaded directly by the app. Rows are scoped by `workspace`, `scope_type`, and `scope_value`, and Trigger.dev keeps each workspace updated in two ways:
 
 - `sync-world-cup-matches` triggers `sync-leaderboard` after match results are synced.
 - `scheduled-leaderboard-sync` runs every minute to pick up newly submitted predictions.
 
 The one-minute leaderboard schedule does not call football-data.org, so it does not count against the 100/day football-data request limit.
 
+Leaderboard sync writes these scopes:
+
+- `overall` with `scope_value = ""` for the full tournament.
+- `stage` with `scope_value` equal to each `matches.stage` value, such as `Group Stage`, `Round of 16`, or `Final`.
+- `group-round` for each group-stage round. `scope_value` is the round number (`1`, `2`, `3`, etc.) and `scope_label` is shown as `Group Stage - 1st round`, `Group Stage - 2nd round`, etc. The sync uses `matches.matchday` when present; otherwise it infers rounds per group by kickoff order, matching the predictions page.
+
 Leaderboard sync writes `previous_rank` on every create/update:
 
 - On create, `previous_rank` is initialized to `rank`.
 - On update, `previous_rank` is set to the row's prior `rank` before applying the new one.
 
-The Activity feed rank-climb item is shown only when `previous_rank - rank >= 2`.
+The Activity feed rank-climb item is shown only for `overall` leaderboard rows when `previous_rank - rank >= 2`.
 Those rank-climb rows are now persisted through `/api/activity/events` instead of being generated on page load.
