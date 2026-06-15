@@ -62,7 +62,10 @@ type FootballDataJson = Record<string, unknown>;
 
 type MatchRecord = {
     id: string;
+    status?: "scheduled" | "live" | "final" | "";
     result?: "home" | "draw" | "away" | "";
+    home_score?: number | null;
+    away_score?: number | null;
 };
 
 type UpsertResult = "created" | "updated";
@@ -210,6 +213,29 @@ function matchPayload(match: FootballDataMatch) {
     };
 }
 
+function preserveFinalState(payload: ReturnType<typeof matchPayload>, existing: MatchRecord | null) {
+    if (!existing) return payload;
+    const existingIsFinal = existing.status === "final" || Boolean(existing.result);
+    if (!existingIsFinal || payload.status === "final") return payload;
+
+    logger.warn("Ignoring non-final upstream regression for final match", {
+        recordId: existing.id,
+        externalId: payload.external_id,
+        existingStatus: existing.status,
+        existingResult: existing.result,
+        upstreamStatus: payload.status,
+        upstreamResult: payload.result,
+    });
+
+    return {
+        ...payload,
+        status: "final",
+        result: existing.result || payload.result,
+        home_score: existing.home_score ?? payload.home_score,
+        away_score: existing.away_score ?? payload.away_score,
+    };
+}
+
 function escapePbFilterValue(value: string) {
     return value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 }
@@ -332,7 +358,8 @@ async function fetchWorldCupMatches() {
 }
 
 async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<MatchUpsertResult> {
-    const payload = matchPayload(match);
+    const rawPayload = matchPayload(match);
+    let payload = rawPayload;
     const externalId = escapePbFilterValue(payload.external_id);
     let existing: MatchRecord | null = null;
 
@@ -355,6 +382,7 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Ma
     }
 
     if (existing) {
+        payload = preserveFinalState(rawPayload, existing);
         if (payload.status === "final") {
             logger.log("Updating final football-data match", {
                 recordId: existing.id,
