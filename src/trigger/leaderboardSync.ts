@@ -89,6 +89,11 @@ type LeaderboardScopeBackfillResult = {
   skipped: number;
 };
 
+type ExistingLeaderboardIndex = {
+  byKey: Map<string, LeaderboardRecord>;
+  duplicateIds: string[];
+};
+
 function errorDetails(err: unknown) {
   if (!(err instanceof Error)) return { message: String(err) };
 
@@ -136,10 +141,14 @@ function matchStage(match: MatchRecord) {
   return match.stage || "Group Stage";
 }
 
+function isGroupStageMatch(match: MatchRecord) {
+  return matchStage(match) === "Group Stage";
+}
+
 function inferGroupRounds(matches: MatchRecord[]) {
   const byGroup = new Map<string, MatchRecord[]>();
   matches.forEach((match) => {
-    if (matchStage(match) !== "Group Stage") return;
+    if (!isGroupStageMatch(match)) return;
     const groupKey = match.group || "Ungrouped";
     const groupMatches = byGroup.get(groupKey) || [];
     groupMatches.push(match);
@@ -169,20 +178,20 @@ function leaderboardScopes(matches: MatchRecord[]): LeaderboardScope[] {
     matches,
   }];
 
-  const stageNames = Array.from(new Set(matches.map(matchStage)));
-  for (const stageName of stageNames) {
+  const finalStageMatches = matches.filter((match) => !isGroupStageMatch(match));
+  if (finalStageMatches.length > 0) {
     scopes.push({
       type: "stage",
-      value: stageName,
-      label: stageName,
-      matches: matches.filter((match) => matchStage(match) === stageName),
+      value: "Final Stage",
+      label: "Final Stage",
+      matches: finalStageMatches,
     });
   }
 
   const inferredRounds = inferGroupRounds(matches);
   const groupRounds = new Map<number, MatchRecord[]>();
   matches.forEach((match) => {
-    if (matchStage(match) !== "Group Stage") return;
+    if (!isGroupStageMatch(match)) return;
     const roundNumber = match.matchday || inferredRounds.get(match.id);
     if (!roundNumber) return;
     const roundMatches = groupRounds.get(roundNumber) || [];
@@ -206,6 +215,31 @@ function leaderboardScopes(matches: MatchRecord[]): LeaderboardScope[] {
 
 function scopeRecordKey(scopeType?: string, scopeValue?: string, userId?: string) {
   return `${scopeType || "overall"}:${scopeValue || ""}:${userId || ""}`;
+}
+
+function indexLeaderboardRecords(records: LeaderboardRecord[]): ExistingLeaderboardIndex {
+  const byKey = new Map<string, LeaderboardRecord>();
+  const duplicateIds: string[] = [];
+
+  for (const record of records) {
+    const key = scopeRecordKey(record.scope_type, record.scope_value, relationId(record.user));
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, record);
+      continue;
+    }
+
+    const existingUpdated = new Date(existing.updated || 0).getTime();
+    const recordUpdated = new Date(record.updated || 0).getTime();
+    if (recordUpdated > existingUpdated) {
+      duplicateIds.push(existing.id);
+      byKey.set(key, record);
+    } else {
+      duplicateIds.push(record.id);
+    }
+  }
+
+  return { byKey, duplicateIds };
 }
 
 function calculateRows(
@@ -332,8 +366,9 @@ async function backfillOverallLeaderboardScope(): Promise<LeaderboardScopeBackfi
       record.scope_type === "overall" &&
       (record.scope_value || "") === "" &&
       record.scope_label === "All tournament";
+    const hasNonOverallScope = Boolean(record.scope_type && record.scope_type !== "overall");
 
-    if (alreadyOverall) {
+    if (alreadyOverall || hasNonOverallScope) {
       totals.skipped += 1;
       continue;
     }
@@ -376,13 +411,13 @@ async function syncWorkspaceLeaderboard(
   const scopes = leaderboardScopes(matches);
   const rows = scopes.flatMap((scope) => calculateRows(workspace.id, scope, memberships, predictions));
   const expectedKeys = new Set(rows.map((row) => scopeRecordKey(row.scope_type, row.scope_value, row.user)));
-  const existingByKey = new Map(
-    leaderboardRecords
-      .map((record) => [scopeRecordKey(record.scope_type, record.scope_value, relationId(record.user)), record] as const)
-      .filter((entry): entry is [string, LeaderboardRecord] => Boolean(entry[0])),
-  );
+  const { byKey: existingByKey, duplicateIds } = indexLeaderboardRecords(leaderboardRecords);
   const totals: Record<UpsertResult, number> = { created: 0, updated: 0, skipped: 0 };
-  let deleted = 0;
+  let deleted = duplicateIds.length;
+
+  for (const duplicateId of duplicateIds) {
+    await pb.collection("leaderboard").delete(duplicateId);
+  }
 
   for (const row of rows) {
     const result = await upsertLeaderboardRow(pb, row, existingByKey, row.scope_type === "overall");
@@ -488,6 +523,29 @@ export const backfillLeaderboardOverallScope = task({
 
       return {
         ok: false,
+        error: errorDetails(err),
+      };
+    }
+  },
+});
+
+export const cleanupDuplicateLeaderboardRows = task({
+  id: "cleanup-duplicate-leaderboard-rows",
+  retry: {
+    maxAttempts: 1,
+  },
+  run: async (payload: { workspaceId?: string } = {}) => {
+    try {
+      return await syncLeaderboardRows("duplicate-cleanup", payload.workspaceId);
+    } catch (err) {
+      logger.error("Duplicate leaderboard cleanup failed", {
+        workspaceId: payload.workspaceId,
+        error: errorDetails(err),
+      });
+
+      return {
+        ok: false,
+        workspaceId: payload.workspaceId,
         error: errorDetails(err),
       };
     }

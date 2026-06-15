@@ -58,10 +58,14 @@ function matchStage(match) {
   return match.stage || 'Group Stage'
 }
 
+function isGroupStageMatch(match) {
+  return matchStage(match) === 'Group Stage'
+}
+
 function inferGroupRounds(matches) {
   const byGroup = new Map()
   matches.forEach((match) => {
-    if (matchStage(match) !== 'Group Stage') return
+    if (!isGroupStageMatch(match)) return
     const groupKey = match.group || 'Ungrouped'
     if (!byGroup.has(groupKey)) byGroup.set(groupKey, [])
     byGroup.get(groupKey).push(match)
@@ -94,19 +98,20 @@ function leaderboardScopeOptions(matches) {
     matches,
   }]
 
-  Array.from(new Set(matches.map(matchStage))).forEach((stage) => {
+  const finalStageMatches = matches.filter((match) => !isGroupStageMatch(match))
+  if (finalStageMatches.length > 0) {
     options.push({
       type: 'stage',
-      value: stage,
-      label: stage,
-      matches: matches.filter((match) => matchStage(match) === stage),
+      value: 'Final Stage',
+      label: 'Final Stage',
+      matches: finalStageMatches,
     })
-  })
+  }
 
   const inferredRounds = inferGroupRounds(matches)
   const groupRounds = new Map()
   matches.forEach((match) => {
-    if (matchStage(match) !== 'Group Stage') return
+    if (!isGroupStageMatch(match)) return
     const roundNumber = match.matchday || inferredRounds.get(match.id)
     if (!roundNumber) return
     const roundMatches = groupRounds.get(roundNumber) || []

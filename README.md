@@ -94,8 +94,8 @@ CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspa
 - `workspace` relation to `workspaces`, required
 - `user` relation to `users`, required
 - `scope_type` select: `overall`, `stage`, `group-round`, required
-- `scope_value` text; use an empty string for `overall`, the stage name for `stage`, and the round number for `group-round`
-- `scope_label` text, required; display label such as `All tournament`, `Round of 16`, or `Group Stage - 1st round`
+- `scope_value` text; use an empty string for `overall`, `Final Stage` for the combined knockout/final rounds, and the round number for `group-round`
+- `scope_label` text, required; display label such as `All tournament`, `Final Stage`, or `Group Stage - 1st round`
 - `name` text, required
 - `points` number
 - `correct` number
@@ -122,7 +122,14 @@ Migration order for existing leaderboard data:
 2. Run the one-time Trigger.dev task `backfill-leaderboard-overall-scope`. It sets existing rows to `scope_type = "overall"`, `scope_value = ""`, and `scope_label = "All tournament"`.
 3. Drop the old `idx_leaderboard_workspace_user` index.
 4. Add `idx_leaderboard_workspace_scope_user`.
-5. Run `sync-leaderboard` once to generate the stage and group-round rows.
+5. Run `sync-leaderboard` once to generate the final-stage and group-round rows.
+
+If duplicate leaderboard rows already exist because `sync-leaderboard` ran before the scoped unique index was added:
+
+1. Pause the scheduled `scheduled-leaderboard-sync` task in Trigger.dev.
+2. Run the one-time Trigger.dev task `cleanup-duplicate-leaderboard-rows`. It keeps the newest row for each `(workspace, scope_type, scope_value, user)` key, deletes duplicate rows, deletes obsolete per-stage rows, and recalculates stored standings.
+3. Add `idx_leaderboard_workspace_scope_user`.
+4. Resume `scheduled-leaderboard-sync`.
 
 ### activity_events
 
@@ -295,7 +302,7 @@ The one-minute leaderboard schedule does not call football-data.org, so it does 
 Leaderboard sync writes these scopes:
 
 - `overall` with `scope_value = ""` for the full tournament.
-- `stage` with `scope_value` equal to each `matches.stage` value, such as `Group Stage`, `Round of 16`, or `Final`.
+- `stage` with `scope_value = "Final Stage"` for all non-group-stage matches combined.
 - `group-round` for each group-stage round. `scope_value` is the round number (`1`, `2`, `3`, etc.) and `scope_label` is shown as `Group Stage - 1st round`, `Group Stage - 2nd round`, etc. The sync uses `matches.matchday` when present; otherwise it infers rounds per group by kickoff order, matching the predictions page.
 
 Leaderboard sync writes `previous_rank` on every create/update:
