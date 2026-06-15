@@ -268,12 +268,16 @@ function calculateRows(
     .filter((user): user is UserRecord => Boolean(user?.id))
     .map((user) => {
       const userPredictions = predictionsByUser.get(user.id) || [];
+      const completedPredictions = userPredictions.filter((prediction) => {
+        const matchId = relationId(prediction.match);
+        return Boolean(matchId && finals.has(matchId));
+      });
       const correct = userPredictions.filter((prediction) => {
         const matchId = relationId(prediction.match);
         const match = matchId ? finals.get(matchId) : undefined;
         return match?.result && match.result === prediction.pick;
       }).length;
-      const predictionsCount = userPredictions.length;
+      const completedPredictionsCount = completedPredictions.length;
 
       return {
         workspace: workspaceId,
@@ -284,8 +288,8 @@ function calculateRows(
         name: cleanName(user.name),
         points: correct * 3,
         correct,
-        predictions: predictionsCount,
-        accuracy: predictionsCount ? Math.round((correct / predictionsCount) * 100) : 0,
+        predictions: completedPredictionsCount,
+        accuracy: completedPredictionsCount ? Math.round((correct / completedPredictionsCount) * 100) : 0,
         rank: 0,
       };
     })

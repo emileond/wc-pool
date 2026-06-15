@@ -7,13 +7,20 @@ function jsonResponse(data, status = 200) {
   })
 }
 
-function errorResponse(message, status = 400) {
-  return jsonResponse({ error: message }, status)
+function errorResponse(message, status = 400, details = undefined) {
+  return jsonResponse(details ? { error: message, details } : { error: message }, status)
 }
 
 function activityError(message, status = 400) {
   const error = new Error(message)
   error.status = status
+  return error
+}
+
+function pocketbaseError(payload, fallbackMessage, fallbackStatus = 500) {
+  const error = new Error(payload?.message || fallbackMessage)
+  error.status = payload?.status || fallbackStatus
+  error.details = payload?.data || payload?.response || payload || null
   return error
 }
 
@@ -210,7 +217,7 @@ async function upsertActivityEvent(pbUrl, headers, event) {
       },
     )
     if (!response.ok) {
-      throw new Error(payload?.message || 'Could not update activity event.')
+      throw pocketbaseError(payload, 'Could not update activity event.', response.status)
     }
     return { action: 'updated', event: payload }
   }
@@ -247,7 +254,7 @@ async function upsertActivityEvent(pbUrl, headers, event) {
     if (response.ok) return { action: 'updated', event: payload }
   }
 
-  throw new Error(created.payload?.message || 'Could not create activity event.')
+  throw pocketbaseError(created.payload, 'Could not create activity event.', created.response.status)
 }
 
 async function buildPredictionEvents(pbUrl, headers, body, authUser, isService) {
@@ -407,6 +414,10 @@ export async function onRequestPost(context) {
       skipped: events.length === 0,
     }, saved.some((entry) => entry.action === 'created') ? 201 : 200)
   } catch (error) {
-    return errorResponse(error?.message || 'Could not save activity event.', error?.status || 500)
+    return errorResponse(
+      error?.message || 'Could not save activity event.',
+      error?.status || 500,
+      error?.details,
+    )
   }
 }

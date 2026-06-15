@@ -99,8 +99,8 @@ CREATE UNIQUE INDEX idx_predictions_workspace_user_match ON predictions (workspa
 - `name` text, required
 - `points` number
 - `correct` number
-- `predictions` number
-- `accuracy` number
+- `predictions` number; count of this user's predictions for completed matches in the leaderboard scope
+- `accuracy` number; `correct / predictions`, where `predictions` includes only completed matches
 - `rank` number
 - `previous_rank` number (required for activity feed rank-climb events)
 
@@ -136,7 +136,7 @@ If duplicate leaderboard rows already exist because `sync-leaderboard` ran befor
 - `workspace` relation to `workspaces`, required
 - `user` relation to `users` (optional; present for prediction and rank-climb events)
 - `match` relation to `matches` (optional; present for prediction and result events)
-- `type` select: `prediction`, `result`, `rank-climb`
+- `type` select, required. Configure the exact allowed values as `prediction`, `result`, and `rank-climb`.
 - `dedupe_key` text, required
 - `occurred_at` date, required
 - `payload` json, required
