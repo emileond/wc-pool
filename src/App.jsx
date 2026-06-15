@@ -16,6 +16,7 @@ import {toast} from 'sonner'
 import {useLocation, useNavigate} from 'react-router-dom'
 import {pb} from './lib/pocketbase';
 import useWorkspaceData from './hooks/react-query/useWorkspaceData'
+import { ACTIVITY_PAGE_SIZE } from './hooks/react-query/useActivityEvents'
 import Panel from './components/shared/Panel'
 import UserStatsCard from './components/sidebar/UserStatsCard'
 import PoolStatusCard from './components/sidebar/PoolStatusCard'
@@ -74,6 +75,15 @@ pb.autoCancellation(false)
 //    - predictions (number)
 //    - accuracy    (number)
 //    - rank        (number)
+//
+//  activity_events
+//    - workspace   (relation → workspaces)
+//    - user        (relation → users, optional)
+//    - match       (relation → matches, optional)
+//    - type        (text/select: "prediction" | "result" | "rank-climb")
+//    - dedupe_key  (text, unique)
+//    - occurred_at (date)
+//    - payload     (json)
 //
 // The UI still calls signed-in users "players" because that is the pool
 // language, but live PocketBase data now uses the built-in users collection
@@ -229,6 +239,21 @@ function normalizeLeaderboard(record) {
         ),
         createdAt: record.created || '',
         updatedAt: record.updated || '',
+    }
+}
+
+function normalizeActivityEvent(record) {
+    const payload = record.payload && typeof record.payload === 'object' ? record.payload : {}
+    const createdAt = record.occurred_at || record.created || ''
+    const at = createdAt ? new Date(createdAt).getTime() : 0
+
+    return {
+        id: record.id,
+        type: record.type || payload.type || '',
+        at: Number.isFinite(at) ? at : 0,
+        createdAt,
+        playerId: relationId(record.user) || payload.playerId || '',
+        ...payload,
     }
 }
 
@@ -428,6 +453,23 @@ async function loadWorkspaceLeaderboard(workspaceId) {
     return loadPocketBaseCollection('leaderboard', {filter: workspaceFilter, sort: 'rank'}, normalizeLeaderboard)
 }
 
+async function loadWorkspaceActivityEvents(workspaceId, {page = 1, perPage = ACTIVITY_PAGE_SIZE} = {}) {
+    const workspaceFilter = workspaceId ? `workspace="${escapePbFilterValue(workspaceId)}"` : 'id=""'
+    try {
+        const result = await pb.collection('activity_events').getList(page, perPage, {
+            filter: workspaceFilter,
+            sort: '-occurred_at,-created',
+        })
+        return {
+            events: result.items.map(normalizeActivityEvent),
+            page: result.page,
+            hasMore: result.page < result.totalPages,
+        }
+    } catch (err) {
+        throw collectionAccessError('activity_events', 'read', err)
+    }
+}
+
 async function loadUserPools(userId) {
     if (!userId) return []
     const userFilter = `user="${escapePbFilterValue(userId)}"`
@@ -576,6 +618,24 @@ function AppContent() {
         loadWorkspaceMatches,
         loadWorkspacePredictions,
         loadWorkspaceLeaderboard,
+        recordActivityEventRequest: async (event) => {
+            const authToken = pb.authStore.token
+            if (!authToken) throw new Error('Missing auth session.')
+
+            const response = await fetch('/api/activity/events', {
+                method: 'POST',
+                headers: {
+                    'content-type': 'application/json',
+                    authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify(event),
+            })
+            const payload = await response.json().catch(() => ({}))
+            if (!response.ok) {
+                throw new Error(payload?.error || payload?.message || 'Could not record activity.')
+            }
+            return payload
+        },
         savePredictionRequest: async ({workspaceId: targetWorkspaceId, playerId, matchId, pick}) => {
             const ep = escapePbFilterValue(playerId)
             const em = escapePbFilterValue(matchId)
@@ -1242,9 +1302,8 @@ function AppContent() {
                     )}
                     {activeWorkspace && activePage === 'activity' && (
                         <ActivityFeedPage
-                            players={effectiveData.players}
-                            matches={matches}
-                            predictions={effectiveData.predictions}
+                            workspaceId={activeWorkspace.id}
+                            loadWorkspaceActivityEvents={loadWorkspaceActivityEvents}
                             leaderboard={leaderboard}
                             canViewActivity={Boolean(player)}
                             onOpenProfile={(selectedPlayerId) => {

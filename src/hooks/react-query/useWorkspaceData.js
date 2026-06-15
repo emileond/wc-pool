@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { workspaceActivityEventsQueryKey } from './useActivityEvents'
 
 function workspacePlayersQueryKey(workspaceId) {
   return ['workspace-players', workspaceId || 'none']
@@ -25,6 +26,7 @@ export default function useWorkspaceData({
   loadWorkspacePredictions,
   loadWorkspaceLeaderboard,
   savePredictionRequest,
+  recordActivityEventRequest,
   createMatchRequest,
   updateMatchRequest,
   deleteMatchRequest,
@@ -124,8 +126,27 @@ export default function useWorkspaceData({
     ])
   }
 
+  async function refreshActivityEvents(targetWorkspaceId = workspaceId) {
+    if (!targetWorkspaceId) return
+    await queryClient.invalidateQueries({ queryKey: workspaceActivityEventsQueryKey(targetWorkspaceId) })
+  }
+
   const savePredictionMutation = useMutation({
-    mutationFn: savePredictionRequest,
+    mutationFn: async (variables) => {
+      const savedPrediction = await savePredictionRequest(variables)
+      if (recordActivityEventRequest) {
+        await recordActivityEventRequest({
+          type: 'prediction',
+          workspaceId: variables.workspaceId,
+          userId: variables.playerId,
+          matchId: variables.matchId,
+          predictionId: savedPrediction?.id,
+        }).catch((error) => {
+          console.error('Could not record prediction activity event', error)
+        })
+      }
+      return savedPrediction
+    },
     onMutate: async ({ workspaceId: targetWorkspaceId, playerId, matchId, pick }) => {
       const targetPredictionsKey = workspacePredictionsQueryKey(targetWorkspaceId)
       await queryClient.cancelQueries({ queryKey: targetPredictionsKey })
@@ -148,7 +169,10 @@ export default function useWorkspaceData({
       }
     },
     onSettled: async (_data, _error, variables) => {
-      await refreshLeaderboardAndPredictions(variables.workspaceId)
+      await Promise.all([
+        refreshLeaderboardAndPredictions(variables.workspaceId),
+        refreshActivityEvents(variables.workspaceId),
+      ])
     },
   })
 
@@ -184,6 +208,7 @@ export default function useWorkspaceData({
     pocketbaseQueryLoading,
     pocketbaseQueryError,
     refreshWorkspaceData,
+    refreshActivityEvents,
     savePrediction: (variables) => savePredictionMutation.mutateAsync(variables),
     createMatch: (variables) => createMatchMutation.mutateAsync(variables),
     updateMatch: (variables) => updateMatchMutation.mutateAsync(variables),

@@ -1,5 +1,6 @@
 import { logger, schedules, task } from "@trigger.dev/sdk/v3";
 import type PocketBase from "pocketbase";
+import { recordActivityEvent } from "./activityEvents.ts";
 import { pocketBaseClient } from "./pocketbaseClient.ts";
 
 type UserRecord = {
@@ -47,6 +48,7 @@ type LeaderboardRecord = {
   accuracy?: number;
   rank?: number;
   previous_rank?: number;
+  updated?: string;
 };
 
 type LeaderboardRow = {
@@ -154,10 +156,27 @@ async function upsertLeaderboardRow(
     if (unchanged) return "skipped";
 
     const previousRank = Number(existing.rank) || row.rank;
-    await pb.collection("leaderboard").update(existing.id, {
+    const updated = await pb.collection("leaderboard").update<LeaderboardRecord>(existing.id, {
       ...row,
       previous_rank: previousRank,
     });
+    const spots = previousRank - row.rank;
+    if (spots >= 2) {
+      await recordActivityEvent({
+        type: "rank-climb",
+        workspaceId: row.workspace,
+        userId: row.user,
+        rank: row.rank,
+        previousRank,
+        spots,
+        points: row.points,
+        correct: row.correct,
+        predictions: row.predictions,
+        playerName: row.name,
+        occurredAt: updated.updated,
+        eventKey: `rank-climb:${row.workspace}:${row.user}:${previousRank}:${row.rank}:${row.points}:${row.correct}:${row.predictions}`,
+      }, `leaderboard:${row.workspace}:${row.user}`);
+    }
     return "updated";
   }
 

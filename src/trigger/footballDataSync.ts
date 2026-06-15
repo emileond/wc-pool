@@ -1,6 +1,7 @@
 import {logger, schedules, tasks} from "@trigger.dev/sdk/v3";
 import type PocketBase from "pocketbase";
 import type {syncLeaderboard} from "./leaderboardSync.ts";
+import {recordActivityEvent} from "./activityEvents.ts";
 import {pocketBaseClient} from "./pocketbaseClient.ts";
 
 const FOOTBALL_DATA_BASE_URL = "https://api.football-data.org/v4";
@@ -26,7 +27,6 @@ type FootballDataScore = {
 type FootballDataMatch = {
     id: number;
     utcDate: string;
-    minute?: number | null;
     status:
         | "SCHEDULED"
         | "TIMED"
@@ -62,9 +62,15 @@ type FootballDataJson = Record<string, unknown>;
 
 type MatchRecord = {
     id: string;
+    result?: "home" | "draw" | "away" | "";
 };
 
 type UpsertResult = "created" | "updated";
+type MatchUpsertResult = {
+    result: UpsertResult;
+    recordId: string;
+    shouldEmitResultEvent: boolean;
+};
 type AppResult = "home" | "draw" | "away" | null;
 
 function requiredEnv(name: string) {
@@ -122,8 +128,9 @@ function appResult(match: FootballDataMatch): AppResult {
     if (winner === "AWAY_TEAM" || winner === "AWAY") return "away";
     if (winner === "DRAW") return "draw";
 
-    const [homeScore, awayScore] = matchScore(match);
-    if (!hasCompleteScore(homeScore, awayScore)) return null;
+    const scorePair = matchScore(match);
+    if (!isCompleteScorePair(scorePair)) return null;
+    const [homeScore, awayScore] = scorePair;
     if (homeScore > awayScore) return "home";
     if (awayScore > homeScore) return "away";
     return "draw";
@@ -184,10 +191,6 @@ function normalizeTeamName(name?: string | null) {
 
 function matchPayload(match: FootballDataMatch) {
     const [homeScore, awayScore] = matchScore(match);
-    const minute =
-        typeof match.minute === "number" && Number.isFinite(match.minute)
-            ? Math.max(0, Math.floor(match.minute))
-            : null;
 
     return {
         external_id: String(match.id),
@@ -200,7 +203,6 @@ function matchPayload(match: FootballDataMatch) {
         away_crest: match.awayTeam.crest || "",
         venue: match.venue || "",
         kickoff: match.utcDate,
-        minute,
         status: appStatus(match.status),
         result: appResult(match),
         home_score: homeScore,
@@ -326,38 +328,10 @@ async function fetchWorldCupMatches() {
         throw new Error("football-data.org returned 0 World Cup matches; refusing to mark sync as successful");
     }
 
-    const liveMatches = data.matches.filter(
-        (match) => match.status === "IN_PLAY" || match.status === "PAUSED" || match.status === "SUSPENDED",
-    );
-    const matchesWithMinute = data.matches.filter(
-        (match) => match.minute !== null && match.minute !== undefined,
-    );
-    const minuteTypeCounts = data.matches.reduce<Record<string, number>>((acc, match) => {
-        const type = match.minute === null ? "null" : typeof match.minute;
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-    }, {});
-
-    logger.log("football-data minute diagnostics", {
-        fetched: data.matches.length,
-        liveMatches: liveMatches.length,
-        matchesWithMinute: matchesWithMinute.length,
-        minuteTypeCounts,
-        liveSample: liveMatches.slice(0, 3).map((match) => ({
-            id: match.id,
-            status: match.status,
-            minute: match.minute,
-            minuteType: typeof match.minute,
-            utcDate: match.utcDate,
-            lastUpdated: match.lastUpdated,
-        })),
-        responseSample: (liveMatches.length ? liveMatches : data.matches).slice(0, 1),
-    });
-
     return data.matches;
 }
 
-async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<UpsertResult> {
+async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<MatchUpsertResult> {
     const payload = matchPayload(match);
     const externalId = escapePbFilterValue(payload.external_id);
     let existing: MatchRecord | null = null;
@@ -381,16 +355,6 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
     }
 
     if (existing) {
-        if (payload.status === "live") {
-            logger.log("Updating live football-data match minute", {
-                recordId: existing.id,
-                externalId: payload.external_id,
-                providerStatus: match.status,
-                providerMinute: match.minute,
-                providerMinuteType: typeof match.minute,
-                payloadMinute: payload.minute,
-            });
-        }
         if (payload.status === "final") {
             logger.log("Updating final football-data match", {
                 recordId: existing.id,
@@ -415,20 +379,20 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
             });
             throw err;
         }
-        return "updated";
+        return {
+            result: "updated",
+            recordId: existing.id,
+            shouldEmitResultEvent: Boolean(payload.result && payload.result !== existing.result),
+        };
     }
 
     try {
-        if (payload.status === "live") {
-            logger.log("Creating live football-data match minute", {
-                externalId: payload.external_id,
-                providerStatus: match.status,
-                providerMinute: match.minute,
-                providerMinuteType: typeof match.minute,
-                payloadMinute: payload.minute,
-            });
-        }
-        await pb.collection("matches").create(payload);
+        const created = await pb.collection("matches").create<MatchRecord>(payload);
+        return {
+            result: "created",
+            recordId: created.id,
+            shouldEmitResultEvent: Boolean(payload.result),
+        };
     } catch (err) {
         logger.error("PocketBase match create failed", {
             externalId: payload.external_id,
@@ -437,8 +401,6 @@ async function upsertMatch(pb: PocketBase, match: FootballDataMatch): Promise<Up
         });
         throw err;
     }
-
-    return "created";
 }
 
 export const syncWorldCupMatches = schedules.task({
@@ -459,7 +421,13 @@ export const syncWorldCupMatches = schedules.task({
 
             for (const match of matches) {
                 const result = await upsertMatch(pb, match);
-                totals[result] += 1;
+                totals[result.result] += 1;
+                if (result.shouldEmitResultEvent) {
+                    await recordActivityEvent({
+                        type: "result",
+                        matchId: result.recordId,
+                    }, `matches-sync:${result.recordId}`);
+                }
             }
 
             logger.log("World Cup match sync complete", {

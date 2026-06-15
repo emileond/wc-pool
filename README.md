@@ -107,6 +107,22 @@ Add a unique index for one leaderboard row per user per workspace:
 CREATE UNIQUE INDEX idx_leaderboard_workspace_user ON leaderboard (workspace, user);
 ```
 
+### activity_events
+
+- `workspace` relation to `workspaces`, required
+- `user` relation to `users` (optional; present for prediction and rank-climb events)
+- `match` relation to `matches` (optional; present for prediction and result events)
+- `type` select: `prediction`, `result`, `rank-climb`
+- `dedupe_key` text, required
+- `occurred_at` date, required
+- `payload` json, required
+
+Add a unique index so retries and scheduled jobs upsert the same logical event instead of duplicating feed items:
+
+```sql
+CREATE UNIQUE INDEX idx_activity_events_dedupe_key ON activity_events (dedupe_key);
+```
+
 ## PocketBase API Rules
 
 The app signs users in through the built-in `users` auth collection. The leaderboard and prediction ownership both use the auth user record directly, and workspace participation is tracked through `memberships`.
@@ -165,6 +181,14 @@ Create owner/admin memberships manually in PocketBase, or with a trusted server-
 - Update rule: `@request.auth.is_admin = true`
 - Delete rule: `@request.auth.is_admin = true`
 
+### activity_events
+
+- List/Search rule: empty string/public
+- View rule: empty string/public
+- Create rule: `@request.auth.is_admin = true`
+- Update rule: `@request.auth.is_admin = true`
+- Delete rule: `@request.auth.is_admin = true`
+
 The in-app admin PIN is only a local fallback UI unlock. PocketBase authorization is enforced by the rules above, so live fixture and leaderboard writes require an admin/service account.
 
 ## Automated Match Sync
@@ -198,10 +222,16 @@ POCKETBASE_URL=https://your-pocketbase-instance.example
 POCKETBASE_ADMIN_EMAIL=admin-user@example.com
 POCKETBASE_ADMIN_PASSWORD=admin-user-password
 POCKETBASE_AUTH_COLLECTION=users
+PUBLIC_APP_URL=https://your-app.example
+ACTIVITY_EVENTS_SECRET=generate-a-long-random-secret
 ```
 
 `FOOTBALL_DATA_SEASON` is optional and defaults to `2026`.
 `POCKETBASE_AUTH_COLLECTION` is optional and defaults to `users`.
+`PUBLIC_APP_URL` is used by Trigger.dev to call `/api/activity/events` after result and leaderboard changes.
+`ACTIVITY_EVENTS_SECRET` must match the same environment variable in your app host so scheduled jobs can call the activity endpoint.
+
+If your app host cannot be represented by `PUBLIC_APP_URL`, set `ACTIVITY_EVENTS_API_URL` in Trigger.dev to the full endpoint URL, for example `https://your-app.example/api/activity/events`.
 
 For the recommended setup, `POCKETBASE_ADMIN_EMAIL` and `POCKETBASE_ADMIN_PASSWORD` should be a normal `users` auth account with `is_admin = true`. The `matches` and `leaderboard` create/update/delete API rules above authorize that account to sync fixtures and standings.
 
@@ -218,6 +248,7 @@ Alternatively, keep `POCKETBASE_AUTH_COLLECTION=users` and set `POCKETBASE_SUPER
 The free football-data.org tier allows 100 requests/day. A 20-minute schedule uses 72 planned requests/day, leaving margin for manual testing or occasional failed runs. The task disables Trigger-level retries and does not internally retry football-data.org requests by default so scheduled usage stays predictable.
 
 After a successful match sync, Trigger.dev starts the `sync-leaderboard` task to refresh stored standings.
+When a synced match newly receives a final result, the task also calls `/api/activity/events` to create one stored result event per workspace.
 
 Run locally:
 
@@ -250,3 +281,4 @@ Leaderboard sync writes `previous_rank` on every create/update:
 - On update, `previous_rank` is set to the row's prior `rank` before applying the new one.
 
 The Activity feed rank-climb item is shown only when `previous_rank - rank >= 2`.
+Those rank-climb rows are now persisted through `/api/activity/events` instead of being generated on page load.

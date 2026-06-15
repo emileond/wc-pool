@@ -1,35 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
 import { MessageCircleMore } from 'lucide-react'
 import { T } from 'gt-react'
 import Panel from '../shared/Panel'
-import { createActivityFeedCursor } from './activityFeedEvents'
+import useActivityEvents from '../../hooks/react-query/useActivityEvents'
 import ActivityFeedItem from './ActivityFeedItem'
 
-const PAGE_SIZE = 20
 const MIN_LOADING_DWELL_MS = 280
 
-function maxTime(list, primaryField, fallbackField = '') {
-  let max = 0
-  list.forEach((entry) => {
-    const raw = entry?.[primaryField] || (fallbackField ? entry?.[fallbackField] : '')
-    const value = raw ? new Date(raw).getTime() : 0
-    if (Number.isFinite(value) && value > max) max = value
-  })
-  return max
-}
-
 function ActivityFeedList({
-  cursor,
-  initialEvents,
-  initialHasMore,
+  events,
+  hasMore,
+  isLoading,
+  isLoadingMore,
+  error,
+  onLoadMore,
   onOpenProfile,
   leaderboardByPlayer,
 }) {
   const [feedParent] = useAutoAnimate({ duration: 220, easing: 'ease-out' })
-  const [events, setEvents] = useState(initialEvents)
-  const [hasMore, setHasMore] = useState(initialHasMore)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const loadingMoreRef = useRef(false)
   const sentinelRef = useRef(null)
   const loadTimerRef = useRef(null)
@@ -39,17 +28,13 @@ function ActivityFeedList({
 
     const loadStartedAt = Date.now()
     loadingMoreRef.current = true
-    setIsLoadingMore(true)
-    const page = cursor.nextPage(PAGE_SIZE)
-    const remainingDwell = Math.max(MIN_LOADING_DWELL_MS - (Date.now() - loadStartedAt), 0)
-
-    loadTimerRef.current = window.setTimeout(() => {
-      setEvents((current) => [...current, ...page.events])
-      setHasMore(page.hasMore)
-      setIsLoadingMore(false)
-      loadingMoreRef.current = false
-    }, remainingDwell)
-  }, [cursor, hasMore])
+    Promise.resolve(onLoadMore()).finally(() => {
+      const remainingDwell = Math.max(MIN_LOADING_DWELL_MS - (Date.now() - loadStartedAt), 0)
+      loadTimerRef.current = window.setTimeout(() => {
+        loadingMoreRef.current = false
+      }, remainingDwell)
+    })
+  }, [hasMore, onLoadMore])
 
   useEffect(() => () => {
     if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current)
@@ -70,6 +55,25 @@ function ActivityFeedList({
     observer.observe(node)
     return () => observer.disconnect()
   }, [hasMore, loadMore])
+
+  if (isLoading) {
+    return (
+      <div className="py-8 text-center">
+        <span className="loading loading-dots loading-md text-base-content/40" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="py-8 text-center">
+        <MessageCircleMore className="mx-auto mb-2 text-primary/40" size={24} />
+        <p className="text-sm text-base-content/50">
+          <T>Could not load activity right now.</T>
+        </p>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -103,34 +107,17 @@ function ActivityFeedList({
 }
 
 export default function ActivityFeedPage({
-  players,
-  matches,
-  predictions,
+  workspaceId,
+  loadWorkspaceActivityEvents,
   leaderboard,
   onOpenProfile,
   canViewActivity,
 }) {
-  const cursorState = useMemo(() => {
-    const cursor = createActivityFeedCursor({ players, matches, predictions, leaderboard })
-    const firstPage = cursor.nextPage(PAGE_SIZE)
-    const version = [
-      players.length,
-      matches.length,
-      predictions.length,
-      leaderboard.length,
-      maxTime(matches, 'updatedAt', 'createdAt'),
-      maxTime(predictions, 'updatedAt', 'createdAt'),
-      maxTime(leaderboard, 'updatedAt', 'createdAt'),
-    ].join(':')
-
-    return {
-      key: version,
-      cursor,
-      initialEvents: firstPage.events,
-      initialHasMore: firstPage.hasMore,
-    }
-  }, [leaderboard, matches, players, predictions])
-
+  const activityQuery = useActivityEvents({
+    workspaceId,
+    enabled: canViewActivity,
+    loadWorkspaceActivityEvents,
+  })
   const leaderboardByPlayer = useMemo(
     () => new Map(leaderboard.map((row, index) => [String(row.player), {
       rank: Number(row.rank) || index + 1,
@@ -161,10 +148,12 @@ export default function ActivityFeedPage({
           </div>
         ) : (
           <ActivityFeedList
-            key={cursorState.key}
-            cursor={cursorState.cursor}
-            initialEvents={cursorState.initialEvents}
-            initialHasMore={cursorState.initialHasMore}
+            events={activityQuery.events}
+            hasMore={activityQuery.hasNextPage}
+            isLoading={activityQuery.isLoading}
+            isLoadingMore={activityQuery.isFetchingNextPage}
+            error={activityQuery.error}
+            onLoadMore={activityQuery.fetchNextPage}
             onOpenProfile={onOpenProfile}
             leaderboardByPlayer={leaderboardByPlayer}
           />
