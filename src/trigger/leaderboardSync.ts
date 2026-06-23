@@ -559,7 +559,7 @@ export const cleanupDuplicateLeaderboardRows = task({
 export const scheduledLeaderboardSync = schedules.task({
   id: "scheduled-leaderboard-sync",
   cron: {
-    pattern: "* * * * *",
+    pattern: "*/10 * * * *",
     timezone: "UTC",
   },
   retry: {

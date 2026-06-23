@@ -375,7 +375,10 @@ export async function onRequestPost(context) {
     return errorResponse('Activity event type is required.', 400)
   }
 
-  if (!isService && body.type !== 'prediction') {
+  const isAdmin = Boolean(authUser?.is_admin)
+  const isAllowedUserEvent = body.type === 'prediction' || (isAdmin && body.type === 'result')
+
+  if (!isService && !isAllowedUserEvent) {
     return errorResponse('Forbidden.', 403)
   }
 

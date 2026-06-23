@@ -219,7 +219,7 @@ The in-app admin PIN is only a local fallback UI unlock. PocketBase authorizatio
 
 Match fixtures and results are synced by Trigger.dev from football-data.org.
 
-The scheduled task is in `src/trigger/footballDataSync.ts`. It runs every 20 minutes, calls:
+The scheduled task is in `src/trigger/footballDataSync.ts`. It runs every 10 minutes, calls:
 
 ```bash
 https://api.football-data.org/v4/competitions/WC/matches?season=2026
@@ -269,9 +269,9 @@ POCKETBASE_ADMIN_PASSWORD=your-pocketbase-superuser-password
 
 Alternatively, keep `POCKETBASE_AUTH_COLLECTION=users` and set `POCKETBASE_SUPERUSER_EMAIL` plus `POCKETBASE_SUPERUSER_PASSWORD` as a fallback. The tasks will try the normal `users` service account first, then `_superusers` only if those fallback variables exist.
 
-The free football-data.org tier allows 100 requests/day. A 20-minute schedule uses 72 planned requests/day, leaving margin for manual testing or occasional failed runs. The task disables Trigger-level retries and does not internally retry football-data.org requests by default so scheduled usage stays predictable.
+The free football-data.org tier allows 100 requests/day. The match sync runs every 10 minutes, which uses 144 planned requests/day, so use a football-data.org plan with enough daily requests or pause the schedule outside active tournament windows. The task disables Trigger-level retries and does not internally retry football-data.org requests by default so scheduled usage stays predictable.
 
-After a successful match sync, Trigger.dev starts the `sync-leaderboard` task to refresh stored standings.
+After a match sync creates or updates stored match data, Trigger.dev starts the `sync-leaderboard` task to refresh stored standings. Polls that fetch unchanged match data skip the downstream leaderboard task to reduce Trigger run usage.
 When a synced match newly receives a final result, the task also calls `/api/activity/events` to create one stored result event per workspace.
 
 Run locally:
@@ -295,9 +295,9 @@ The sync intentionally fails the Trigger.dev run if football-data.org cannot be 
 The leaderboard is stored in the `leaderboard` collection and loaded directly by the app. Rows are scoped by `workspace`, `scope_type`, and `scope_value`, and Trigger.dev keeps each workspace updated in two ways:
 
 - `sync-world-cup-matches` triggers `sync-leaderboard` after match results are synced.
-- `scheduled-leaderboard-sync` runs every minute to pick up newly submitted predictions.
+- `scheduled-leaderboard-sync` runs every 10 minutes to pick up newly submitted predictions and membership changes.
 
-The one-minute leaderboard schedule does not call football-data.org, so it does not count against the 100/day football-data request limit.
+The 10-minute leaderboard schedule does not call football-data.org, so it does not count against the 100/day football-data request limit. Scores from newly synced match results do not wait for this schedule because changed match data triggers `sync-leaderboard` directly.
 
 Leaderboard sync writes these scopes:
 

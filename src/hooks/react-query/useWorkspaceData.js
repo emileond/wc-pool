@@ -184,9 +184,28 @@ export default function useWorkspaceData({
   })
 
   const updateMatchMutation = useMutation({
-    mutationFn: updateMatchRequest,
+    mutationFn: async (variables) => {
+      const savedMatch = await updateMatchRequest(variables)
+      const nextResult = savedMatch?.result ?? variables.patch?.result
+      const previousMatch = effectiveData.matches.find((match) => match.id === variables.matchId)
+      const resultChanged = nextResult && nextResult !== previousMatch?.result
+
+      if (resultChanged && recordActivityEventRequest) {
+        await recordActivityEventRequest({
+          type: 'result',
+          matchId: variables.matchId,
+        }).catch((error) => {
+          console.error('Could not record result activity event', error)
+        })
+      }
+
+      return savedMatch
+    },
     onSettled: async () => {
-      await refreshMatchesPredictionsAndLeaderboard()
+      await Promise.all([
+        refreshMatchesPredictionsAndLeaderboard(),
+        refreshActivityEvents(),
+      ])
     },
   })
 
