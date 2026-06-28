@@ -1492,7 +1492,15 @@ function PredictionsPage({
     onShowAuth,
     onShowJoin,
 }) {
-    const [activeStage, setActiveStage] = useState(STAGE_TABS[0].id)
+    const [activeStage, setActiveStage] = useState(() => {
+        for (const tab of STAGE_TABS) {
+            const hasUpcoming = matches.some(
+                (m) => m.stage === tab.stage && !(m.status === 'final' || Boolean(m.result)),
+            )
+            if (hasUpcoming) return tab.id
+        }
+        return STAGE_TABS[STAGE_TABS.length - 1].id
+    })
     const [showPastMatches, setShowPastMatches] = useState(false)
     const [showPredictedMatches, setShowPredictedMatches] = useState(true)
     const [groupMode, setGroupMode] = useState('round')
@@ -1500,6 +1508,21 @@ function PredictionsPage({
     const [scoringOpen, setScoringOpen] = useState(false)
     const [filtersOpen, setFiltersOpen] = useState(false)
     const [matchesParent] = useAutoAnimate({duration: 220, easing: 'ease-out'})
+
+    useEffect(() => {
+        if (!matches.length) return
+        for (const tab of STAGE_TABS) {
+            const hasNonFinished = matches.some(
+                (m) => m.stage === tab.stage && !(m.status === 'final' || Boolean(m.result)),
+            )
+            if (hasNonFinished) {
+                setActiveStage(tab.id)
+                return
+            }
+        }
+        setActiveStage(STAGE_TABS[STAGE_TABS.length - 1].id)
+    }, [matches])
+
     const activeStageInfo = STAGE_TABS.find((s) => s.id === activeStage) || STAGE_TABS[0]
     const collapseScope = useMemo(
         () => `${activeStage}:${groupMode}:${showPastMatches ? 1 : 0}:${showPredictedMatches ? 1 : 0}`,
