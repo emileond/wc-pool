@@ -136,11 +136,6 @@ function appStatus(status: FootballDataMatch["status"]) {
 function appResult(match: FootballDataMatch): AppResult {
     if (appStatus(match.status) !== "final") return null;
 
-    const winner = match.score?.winner?.toUpperCase();
-    if (winner === "HOME_TEAM" || winner === "HOME") return "home";
-    if (winner === "AWAY_TEAM" || winner === "AWAY") return "away";
-    if (winner === "DRAW") return "draw";
-
     const scorePair = matchScore(match);
     if (!isCompleteScorePair(scorePair)) return null;
     const [homeScore, awayScore] = scorePair;
@@ -181,8 +176,8 @@ function matchScore(match: FootballDataMatch): [number | null, number | null] {
     if (!score) return [null, null];
 
     const candidates = [
-        score.fullTime,
         score.regularTime,
+        score.fullTime,
         score.extraTime,
         score.penalties,
         score.halfTime,

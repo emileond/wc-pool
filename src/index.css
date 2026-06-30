@@ -1,3 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* Make Tailwind's dark: prefix respond to DaisyUI's data-theme="dark" attribute */
+@variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+

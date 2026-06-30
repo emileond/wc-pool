@@ -32,6 +32,8 @@ import HomeLandingPage from './components/marketing/HomeLandingPage'
 import CreatePoolPage from './components/pools/CreatePoolPage'
 import MyPoolsPage from './components/pools/MyPoolsPage'
 import UserMenu from './components/shared/UserMenu'
+import WrappedPage from './components/wrapped/WrappedPage'
+import WrappedDemoPage from './components/wrapped/WrappedDemoPage'
 
 pb.autoCancellation(false)
 
@@ -351,12 +353,16 @@ function isCreatePoolRoute(pathname) {
     return pathname === '/create-pool'
 }
 
+function isWrappedDemoRoute(pathname) {
+    return pathname === '/_/wrapped-demo'
+}
+
 function normalizeAppRoute(pathname) {
     const segments = pathname.split('/').filter(Boolean)
     const hasWorkspace = segments[0] && segments[0] !== '_'
     const section = hasWorkspace ? (segments[1] || 'predictions') : (segments[1] || segments[0] || 'predictions')
     const normalizedSection = section === 'pulse' ? 'activity' : section
-    const page = ['predictions', 'leaderboard', 'activity', 'admin'].includes(normalizedSection)
+    const page = ['predictions', 'leaderboard', 'activity', 'admin', 'wrapped'].includes(normalizedSection)
         ? normalizedSection
         : 'predictions'
     const profileBaseIndex = hasWorkspace ? 2 : (segments[0] === '_' ? 2 : 1)
@@ -586,6 +592,7 @@ function AppContent() {
     const isHomeRoute = location.pathname === '/'
     const poolsRoute = isPoolsRoute(location.pathname)
     const createPoolRoute = isCreatePoolRoute(location.pathname)
+    const wrappedDemoRoute = isWrappedDemoRoute(location.pathname)
     const [activeWorkspace, setActiveWorkspace] = useState(null)
     const [themePreference, setThemePreference] = useState(initialThemePreference)
     const [systemTheme, setSystemTheme] = useState(preferredSystemTheme)
@@ -680,6 +687,7 @@ function AppContent() {
         )
     }, [effectiveData.predictions, player])
     const completedMatches = matches.filter((m) => m.result).length
+    const poolIsOver = completedMatches === matches.length && matches.length > 0
     const poolStartTime = matches.length ? new Date(matches[0].kickoff).getTime() : null
     const poolCountdown = poolStartTime ? calculateCountdown(poolStartTime, now) : null
     const adminAllowed = Boolean(player?.isAdmin || ['owner', 'admin'].includes(player?.role) || adminUnlocked)
@@ -1098,6 +1106,14 @@ function AppContent() {
         )
     }
 
+    if (wrappedDemoRoute) {
+        return (
+            <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
+                <WrappedDemoPage />
+            </div>
+        )
+    }
+
     if (poolsRoute) {
         return (
             <div className="min-h-screen bg-base-200 text-base-content" data-theme={theme}>
@@ -1203,8 +1219,9 @@ function AppContent() {
                                 className="truncate text-xs font-semibold uppercase tracking-widest text-base-content/55">
                                 {activeWorkspace?.name || workspaceName || 'Prediction Pool'}
                             </div>
-                            <h1 className="mt-2 truncate text-3xl font-black leading-tight sm:text-4xl">
-                                World Cup 2026
+                            <h1 className="mt-2 flex items-center gap-3 text-3xl font-black leading-tight sm:text-4xl">
+                                <img src="https://r2.thesportsdb.com/images/media/league/badge/e7er5g1696521789.png" alt="" className="h-10 w-10 shrink-0 object-contain drop-shadow-md" />
+                                <span className="truncate">World Cup 2026</span>
                             </h1>
                         </div>
                         <UserMenu
@@ -1219,6 +1236,12 @@ function AppContent() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <T>
                             <nav className="flex flex-wrap gap-1">
+                                {poolIsOver && (
+                                    <NavButton active={activePage === 'wrapped'}
+                                               onClick={() => navigate(workspacePath(workspaceName, 'wrapped'))}
+                                               icon={Sparkles}
+                                               extra="bg-primary/15 text-primary border-primary/30">Wrapped</NavButton>
+                                )}
                                 <NavButton active={activePage === 'predictions'}
                                            onClick={() => navigate(workspacePath(workspaceName, 'predictions'))}
                                            icon={CircleDot}>Predictions</NavButton>
@@ -1273,6 +1296,16 @@ function AppContent() {
                         />
                     )}
 
+                    {activeWorkspace && activePage === 'wrapped' && (
+                        <WrappedPage
+                            players={effectiveData.players}
+                            matches={matches}
+                            predictions={effectiveData.predictions}
+                            leaderboard={leaderboard}
+                            player={player}
+                            poolName={activeWorkspace?.name}
+                        />
+                    )}
                     {activeWorkspace && activePage === 'predictions' && (
                         <PredictionsPage
                             matches={matches}
@@ -1412,12 +1445,12 @@ function JoinWorkspaceModal({workspaceName, userName, error, loading, onJoin, on
 // ===========================================================================
 // Shared components
 // ===========================================================================
-function NavButton({active, onClick, icon: Icon, children}) {
+function NavButton({active, onClick, icon: Icon, children, extra = ''}) {
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`cursor-pointer flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${
+            className={`cursor-pointer flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-colors ${extra} ${
                 active ? 'border border-primary/35 bg-base-100/70 text-primary shadow-xs' : 'text-base-content/60 hover:bg-base-100/70 hover:text-base-content'
             }`}
         >
