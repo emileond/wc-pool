@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "branchId": "brc_ibe7hxyx2wsu9bbtfvurouib",
+  "entries": [
+    {
+      "fileId": "879f3a5f954ee8b75bf1e91f4ea9916b41c933e5beba7eb6362647a637c9c66d",
+      "versionId": "2e240ac9cbe50c2404040fc183f29033e0ebc5d067f1000922ed9cd7b8730d1c",
+      "translations": {
+        "pt": {
+          "updatedAt": "2026-06-30T06:55:24.221Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/pt.json",
+          "postProcessHash": "b1614104200238ac83ac7ec7a23a91ec300d665342fab9d032dd3210f12f5c72"
+        },
+        "es": {
+          "updatedAt": "2026-06-30T06:55:24.223Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/es.json",
+          "postProcessHash": "414a5170337247ff71fca18456887162294ffa08c3d99851d2da2435e22e9be8"
+        },
+        "ja": {
+          "updatedAt": "2026-06-30T06:55:24.225Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/ja.json",
+          "postProcessHash": "1af4c6abc0692b8c589b3faabedea972e7b6c0c044e06703b10bfc8d8c4b8891"
+        },
+        "it": {
+          "updatedAt": "2026-06-30T06:55:24.226Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/it.json",
+          "postProcessHash": "82a20db6b7582961c2a16fe1559ced9d3fd3b06f9a053e83ed42b12d997742aa"
+        },
+        "fr": {
+          "updatedAt": "2026-06-30T06:55:24.227Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/fr.json",
+          "postProcessHash": "ff941269e63f5f128ce62f8fab9d55d8347f1bdab9c7ef1d380c560ce3fb8a1c"
+        },
+        "ko": {
+          "updatedAt": "2026-06-30T06:55:24.229Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/ko.json",
+          "postProcessHash": "dbf1fdde5cfa2ec0a6ce30ac8428476fb7358251da2146ce31eaa1fbbfc833ef"
+        },
+        "de": {
+          "updatedAt": "2026-06-30T06:55:24.230Z",
+          "fileName": "/Users/emiliosanchez/Documents/ecointeractive/wc-pool/src/_gt/de.json",
+          "postProcessHash": "bdeb2fcb4c1e8300f4798d582646335c01b444b1a53756082c9d444ec863d064"
+        }
+      },
+      "fileName": "__INTERNAL_GT_TEMPLATE_NAME__",
+      "staged": false
+    }
+  ]
+}

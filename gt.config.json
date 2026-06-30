@@ -13,5 +13,6 @@
     "gt": {
       "output": "src/_gt/[locale].json"
     }
-  }
+  },
+  "_versionId": "2e240ac9cbe50c2404040fc183f29033e0ebc5d067f1000922ed9cd7b8730d1c"
 }

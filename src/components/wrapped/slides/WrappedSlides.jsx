@@ -200,7 +200,7 @@ function StatCard({value, label, emoji}) {
             className="flex flex-col items-center rounded-2xl bg-black/15 border border-white/15 px-3 py-3 backdrop-blur-sm">
             {emoji && <div className="text-xl mb-1">{emoji}</div>}
             <div className="anp text-xl font-black text-white">{value}</div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-white/55 mt-0.5"><T>{label}</T></div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-white/55 mt-0.5"><Var>{label}</Var></div>
         </div>
     )
 }
@@ -276,7 +276,7 @@ export function SlideOverview({totalPlayers, totalMatches, totalPredictions}) {
                             <div className="text-2xl mb-1">{emoji}</div>
                             <div className="anp text-3xl font-black">{value}</div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-white/55 mt-0.5">
-                                <T>{label}</T></div>
+                                <Var>{label}</Var></div>
                         </div>
                     ))}
                 </div>
@@ -365,7 +365,7 @@ export function SlideWoodenSpoon({lastPlace, totalPlayers}) {
             <WaveBg/>
             <div className="relative flex flex-col items-center">
                 <div className="abi afl mb-3 text-6xl leading-none">🪵</div>
-                <Label><T>Position {totalPlayers} of {totalPlayers}</T></Label>
+                <Label><T>Position <Var>{totalPlayers}</Var> of <Var>{totalPlayers}</Var></T></Label>
                 <h3 className="afu ad1 mt-3 text-4xl font-black">{lastPlace.name}</h3>
                 <div
                     className="afu ad2 mt-4 flex items-center gap-2 rounded-2xl bg-black/15 border border-white/15 px-5 py-2.5">
@@ -637,7 +637,7 @@ export function SlideBoldPrediction({match, wrongPct, matchPredictionCounts}) {
                     </div>
                 )}
                 <p className="mt-3 text-sm italic text-white/45">
-                    <T>Only <Var>{match.correctCount}</Var> brave soul{match.correctCount !== 1 ? 's' : ''} called it
+                    <T>Only <Var>{match.correctCount}</Var> brave soul<Var>{match.correctCount !== 1 ? 's' : ''}</Var> called it
                         right.</T>
                 </p>
             </div>

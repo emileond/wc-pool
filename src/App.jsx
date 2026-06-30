@@ -1234,27 +1234,25 @@ function AppContent() {
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                        <T>
-                            <nav className="flex flex-wrap gap-1">
-                                {poolIsOver && (
-                                    <NavButton active={activePage === 'wrapped'}
-                                               onClick={() => navigate(workspacePath(workspaceName, 'wrapped'))}
-                                               icon={Sparkles}
-                                               extra="bg-primary/15 text-primary border-primary/30">Wrapped</NavButton>
-                                )}
-                                <NavButton active={activePage === 'predictions'}
-                                           onClick={() => navigate(workspacePath(workspaceName, 'predictions'))}
-                                           icon={CircleDot}>Predictions</NavButton>
-                                <NavButton active={activePage === 'leaderboard'}
-                                           onClick={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
-                                           icon={Trophy}>Leaderboard</NavButton>
-                                <NavButton active={activePage === 'activity'}
-                                           onClick={() => navigate(workspacePath(workspaceName, 'activity'))}
-                                           icon={Activity}>Activity</NavButton>
-                                {/*<NavButton ctive={activePage === 'admin'}
+                        <nav className="flex flex-wrap gap-1">
+                            {poolIsOver && (
+                                <NavButton active={activePage === 'wrapped'}
+                                           onClick={() => navigate(workspacePath(workspaceName, 'wrapped'))}
+                                           icon={Sparkles}
+                                           extra="bg-primary/15 text-primary border-primary/30"><T>Wrapped</T></NavButton>
+                            )}
+                            <NavButton active={activePage === 'predictions'}
+                                       onClick={() => navigate(workspacePath(workspaceName, 'predictions'))}
+                                       icon={CircleDot}><T>Predictions</T></NavButton>
+                            <NavButton active={activePage === 'leaderboard'}
+                                       onClick={() => navigate(workspacePath(workspaceName, 'leaderboard'))}
+                                       icon={Trophy}><T>Leaderboard</T></NavButton>
+                            <NavButton active={activePage === 'activity'}
+                                       onClick={() => navigate(workspacePath(workspaceName, 'activity'))}
+                                       icon={Activity}><T>Activity</T></NavButton>
+                            {/*<NavButton ctive={activePage === 'admin'}
                   onClick={() => setActivePage('admin')} icon={Settings}>Admin</NavButton>*/}
-                            </nav>
-                        </T>
+                        </nav>
                     </div>
                 </div>
             </header>

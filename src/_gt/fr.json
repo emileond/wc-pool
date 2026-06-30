@@ -1,0 +1,341 @@
+{
+  "00593cee12c6ce48": "Match nul",
+  "027d02e80bd4acd3": "Ghana",
+  "038dd6e7831379df": [
+    "Rejoignez ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " pour soumettre vos pronostics et suivre votre score."
+  ],
+  "0515236f2ec9a3dc": "Quart de finale",
+  "051acc34eaf9d1df": "Activité",
+  "06fe069e2e354c9f": "du pool",
+  "0867dd038c7e0887": {
+    "c": [
+      {
+        "i": 2,
+        "t": "TeamCrest"
+      },
+      {
+        "i": 3,
+        "k": "_gt_value_3",
+        "v": "v"
+      }
+    ],
+    "i": 1,
+    "t": "span"
+  },
+  "0a14dde143067c61": "USA",
+  "0aba693eb2a7d892": "« Les dieux du foot ont été impitoyables. Ils reviendront plus forts en 2030. »",
+  "0b3c215db384af5c": [
+    "Il n'y a eu que ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " participant",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    " courageux à avoir vu juste."
+  ],
+  "0d9ca9e89bb2a5cf": "Écosse",
+  "0f442932c6435aad": {
+    "c": {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    "i": 1,
+    "t": "div"
+  },
+  "0f4cc07a59d6c2fc": "Roi de l'élimination directe",
+  "1276b2936a97b94c": "Quand la pression montait, ils ont assuré.",
+  "12ec1e956446c1d8": "Phase de groupes",
+  "13488d9b83ff07dc": "Partager",
+  "14d42f94f3db5683": "s",
+  "151e3cc40d7c2b6b": "Les votes sont clos. Voyons comment tout cela s’est déroulé.",
+  "182a659d70f8ea72": "Mot de passe",
+  "1ae6ebce4c10d7ff": "En attente du calendrier des matchs",
+  "1bc27a95155b34e3": "Vue d’ensemble",
+  "1c615f300fc1acef": "Votre rétrospective",
+  "20d26104469b0ebc": "Total des pronostics",
+  "23b32626507e4ff5": "Colombie",
+  "23febe266e6e0d3d": "États-Unis",
+  "27f4c5c0397237f8": "Joueur introuvable dans ce classement.",
+  "2acbb0f4acd72360": "Allemagne",
+  "2ae4c42d891535fc": [
+    "a grimpé de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " places"
+  ],
+  "2af131eeb0bd2e12": "Match pour la 3e place",
+  "2c0355d081fe8c67": "Toutes les prédictions de ce joueur.",
+  "2c732e8694095d25": "Afrique du Sud",
+  "2d8eea43eae52851": "Le pool commence",
+  "2df5eccdce6e0a24": [
+    "Rejoignez ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " pour faire vos pronostics"
+  ],
+  "2e3808e0d126897f": "Meilleure série",
+  "2e8703e9252b3b33": "Pronostics",
+  "2ecf88ef9e8e4259": "Domicile",
+  "2f59369d3cd781f4": "Barème",
+  "3070a60b00ad489a": "Nom",
+  "30839878c6d4d317": "Regroupement",
+  "338042bd9af934e9": "Pays-Bas",
+  "34af6ddfc9cac4be": "Premier du groupe A",
+  "374dac09151d4578": "En attente",
+  "37c996d7488f8405": "Les prédictions et les mises à jour du classement s’afficheront ici automatiquement.",
+  "39180caf24c6265e": "Match nul",
+  "3a53e919bdcdda94": "Pas encore assez de données.",
+  "3b207d052380c219": "Rejoindre le pool",
+  "3bbd0010058ee8cd": "Matchs joués",
+  "3c40cb2858159cdb": "Corrects",
+  "3ca94e63931f1ea3": "Maroc",
+  "3e067ffe5ea748a3": "Afficher les matchs avec pronostics",
+  "3e784d336673b7ec": "Tchéquie",
+  "3f5c2b399f8d3b78": "Classement",
+  "3f67e3a6f3e87acb": [
+    "Connecté en tant que ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ". Vous pouvez continuer à parcourir le site ou rejoindre cette pool quand vous serez prêt."
+  ],
+  "42b87742c46831a5": "Nul",
+  "4453e4757b4f4cf9": "Actualisation des données du pool…",
+  "447b3c4267008540": "Plus grosse surprise",
+  "44fbd910000d3456": "Premier adversaire",
+  "45364730b756553d": "min",
+  "4590f01cdb6882a8": "Ouzbékistan",
+  "462504620e73d01d": "Extérieur",
+  "46258874be363668": "Brésil",
+  "469aae33a5a5bc74": "Verrouillé",
+  "46d83b23933d98fc": "As du pronostic",
+  "46fbddba4c04a526": "du pool se sont trompés",
+  "47f1f38a0c8edfff": [
+    "Connectez-vous pour soumettre vos pronostics pour ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "49afa076f2982524": "Aucun pronostic pour le moment.",
+  "49e7ca6fc1ecfc58": "joueurs",
+  "4aba3039707ad3b6": "prédictions justes",
+  "4c9f5f6661d88e9b": "Australie",
+  "4cd2d50dafb23172": "Les groupes ? Leur terrain de jeu.",
+  "4d99c304274d4897": "Nouvelle-Zélande",
+  "4ead0cf677142945": "Côte d'Ivoire",
+  "4fee4cc8b28cfaf0": "RÉTROSPECTIVE",
+  "537b386051c8204c": "heures",
+  "53a58cd8803af805": "Coup de sifflet final :",
+  "53fa193620953350": "Joueurs",
+  "5599e833dc88e539": "Ouvrir l’URL d’un espace de travail",
+  "56825e96c1f33a28": "Pronostic manqué",
+  "5692b3d251f7d53a": "Phase",
+  "579e35d0bb5255e5": "À venir",
+  "58d0576c3099239d": "Seizièmes de finale",
+  "58d9bd98beb22c66": "À la prochaine",
+  "5c5ddf8f825d41da": "Corée du Sud",
+  "5cf609a52080794f": [
+    "Position ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " sur ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    }
+  ],
+  "5f7af753f3095088": "Merci d’avoir joué !",
+  "5f9b3090c6ebd4a7": "Cartonne en douce",
+  "5fc4ddb22bcb7f86": "Rétrospective",
+  "5ff2b6196208834d": "Personne n’était d’accord sur celui-là",
+  "60ef184a1d688413": "Précision",
+  "6223c45811e4bc71": "Canada",
+  "635cf4862a9b89d9": "a gagné",
+  "67e650963e7025fb": "RD Congo",
+  "68b9f83d614198b5": "Croatie",
+  "6ee033205ed5bff5": "Les pronostics sont verrouillés au coup d'envoi et ne peuvent plus être modifiés ensuite.",
+  "6ef8e8351a1e5b77": "précision",
+  "6f3a3f8445a7104e": "Paraguay",
+  "70f3289508360373": "Demi-finale",
+  "7109a6e8ae38197d": "« Ils n’ont peut-être pas gagné le pool, mais ils s’y connaissent vraiment en foot. »",
+  "76230d7945e51a03": "Matchs joués",
+  "77b5f98f1f9a4ca7": "Suivant",
+  "7853bd9e23f25bb6": "Total",
+  "79afc76852a2982f": "VS",
+  "79b3c483f8948eec": "🎉 Félicitations !",
+  "7ca761ea36e4d445": "Jordanie",
+  "7d07deb85ba6d564": "Quand ils faisaient un pronostic, ils visaient juste.",
+  "7dd09fdd59c1c7cd": "Portugal",
+  "7e729dec108938f7": "bons pronostics en phase à élimination directe",
+  "7ea0ff7a55f46ac0": "Créez un compte.",
+  "7f71b8e933aee987": "Vous avez déjà un compte ? ",
+  "83d18118a390d5f3": "Revenez à la fin du tournoi pour voir la rétrospective de votre pool.",
+  "83dbe62c61d55bda": "C’est la fin",
+  "8450121ebdfa1dae": "Créer un compte",
+  "845ba43e0aa91b4f": "Débute dans",
+  "84916976ef8f8d86": "Cap-Vert",
+  "84cc5eb3f0ed0d22": "Uruguay",
+  "84f949f44dd985cd": "Norvège",
+  "851c9e7d5f13985b": "Iran",
+  "8555b83cd7f215c4": "Choisissez le résultat avant le coup d'envoi pour marquer des points.",
+  "86a50043ca756a01": "Pool",
+  "88b7378582d9589a": "Argentine",
+  "8b324ba31d982621": "Connectez-vous pour soumettre vos pronostics.",
+  "9099d0df3e0ceef5": "Bon retour",
+  "90bf57558437c008": {
+    "c": [
+      {
+        "i": 2,
+        "t": "UserPlus"
+      },
+      "Pas encore inscrit"
+    ],
+    "i": 1,
+    "t": "div"
+  },
+  "919c56465e9ca5d7": "Impossible de charger ce classement.",
+  "91a1fb9f12d2524e": "En tête",
+  "92267e3641701d68": "Points",
+  "927cb48154a25f55": "Matchs",
+  "939d7858b9db38a0": "À déterminer",
+  "9433c101a0b2d96d": "place.",
+  "96973fb6652ccc76": "Bosnie-Herzégovine",
+  "97bff47be7869dc3": "Haïti",
+  "986dab18039abb9e": "Classement final",
+  "98ad8329b7eb7fe4": "Espace de travail introuvable",
+  "997879730b235a08": "Rejoignez un espace de travail pour soumettre vos pronostics et suivre votre score.",
+  "9a06fd459ce858b9": "En direct",
+  "9b362fb8f28b34d1": "Autriche",
+  "9b80822b4e10dce8": "\"Le détenteur de la cuillère de bois — au cœur de chaque pool. La prochaine fois sera différente.\"",
+  "9db16884c1c9d324": "Retour",
+  "9e1ab819e27bf878": "Les chiffres clés",
+  "9ec680f43d9c06ad": "Suisse",
+  "9efeddd16a1ba09e": "Voici ce qui s’est passé pendant le tournoi",
+  "9f6c561caf66e727": "Égypte",
+  "a09dd8508c7c2b12": "Page des pronostics",
+  "a0ec56b63cb5ebc1": "Match le plus partagé",
+  "a482665efe0bb687": "Prédictions",
+  "a4b99d2d2e59c99b": "France",
+  "a60ceaa335cc5b30": "a pronostiqué",
+  "a65f36dea1c14299": "Belgique",
+  "a68f5eb36170dd82": "jusqu'à la",
+  "a913defaad3414ad": "Aucun joueur pour le moment.",
+  "a9e67eeb22b06243": "Champion du pool",
+  "aa39c8d4b0caedfb": "Précédent",
+  "af7eb4f9c7f0f575": "Filtres",
+  "afc307fd60d5e156": "Pronostics",
+  "b0784c925bcb56bc": "prédictions incorrectes",
+  "b087dec46b6bb396": "Turquie",
+  "b0a632820ce0c1f4": "Finale",
+  "b104514dd0ff33a5": "Mexique",
+  "b22acab22e51149b": "Japon",
+  "b2be70822d55f16a": "Ouvert",
+  "b394af386327cd71": "Deuxième du groupe B",
+  "b50c41465e5408b3": "E-mail",
+  "b571b0ed6391a647": "bons pronostics en phase de groupes",
+  "b6e27ab2537ef874": "Créer un compte",
+  "b771df0379730bca": "Irak",
+  "b7fc48282ebe040e": "justes",
+  "b83a0063a6cecdaf": "Classement",
+  "bbd00c0f14ba7855": "Tunisie",
+  "bbe653637f55dfe4": "Afficher les matchs passés",
+  "c047f54c701ee499": "Faux",
+  "c0f211a19329f0ec": "Arabie saoudite",
+  "c1228f7d87e5648a": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "% en phase à élimination directe"
+  ],
+  "c145bf1755845240": "Côte d'Ivoire",
+  "c16ef97ddffd33b2": "Qatar",
+  "c36f1d7a880b0fbf": "Angleterre",
+  "c4d652790254d3f2": "Le pool a commencé",
+  "c544b470667f829f": "Aucune stat pour le moment",
+  "c678bed8c1d15e05": "Curaçao",
+  "c71c72baddd3d49f": "Adversaire de groupe",
+  "c730811c3d2ca6f8": "Aucun pronostic",
+  "c9c50f0332867e60": "Panama",
+  "ca6f93fa269d9771": "Outsider",
+  "cb65c3d2a721cd4c": "d’affilée",
+  "cbef0cc8095d67c0": "Équateur",
+  "cc73d3632b0806e2": "Vous n’avez pas de compte ? ",
+  "cdc5fc4d2cdf859b": "jours",
+  "cdc68c7d08d5a01b": "Coupe du monde 2026",
+  "ce41522f94f17449": "pts",
+  "cfb2b0875cb6f217": "Mise à jour en direct à mesure que les résultats des matchs sont publiés.",
+  "d12a02d4621bc8fc": "Quel tournoi ! Rendez-vous en 2030 — ou peut-être qu’on trouvera une autre compétition d’ici là.",
+  "d31ed8a36de506ed": "Suède",
+  "d337fb3d75b9a633": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "% de précision en phase de groupes"
+  ],
+  "d35954604b717007": "Vos stats",
+  "d5b5a68e565baba8": "Qualifié",
+  "d665d1422934588f": "Gourou de la phase de groupes",
+  "d849d0bc1d9afbde": "Les pronostics sont verrouillés au coup d’envoi des matchs.",
+  "d90a157682a43912": "Algérie",
+  "d9681ac7e4613ff4": "Rejoindre",
+  "da3ec44170334318": "Fil d’activité en direct des pronostics, des changements dans le classement et des résultats finaux.",
+  "dbe33dcc7842dccc": [
+    "Créez un compte pour ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "dc3e261b96e0409b": "Pronostic correct",
+  "e20a94bb9b905c6a": "Pire série",
+  "e52151684b116f53": {
+    "c": "Rejoindre",
+    "i": 1,
+    "t": "button"
+  },
+  "e8a6945232eb4d05": "Huitièmes de finale",
+  "ea3b755f10424fa5": "Rejoignez cet espace de travail pour voir l’activité des joueurs.",
+  "eb187ab93c3f725f": "Impossible de charger l’activité pour le moment.",
+  "ec21b232e0eacd4a": "Se connecter",
+  "ec43609dd0836245": "Sénégal",
+  "ed67b5ef4903b974": "Barème",
+  "ef8e91cb52a44f12": "Espagne",
+  "f4a140c9e4289397": "Revoir",
+  "f4e7daea577ad235": "Le podium",
+  "fb7900f78343f2d1": "Pronostiquer correctement le résultat du match rapporte 3 points.",
+  "ffb37ba7ae41476e": "Score"
+}

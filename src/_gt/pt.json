@@ -1,0 +1,341 @@
+{
+  "00593cee12c6ce48": "Empate",
+  "027d02e80bd4acd3": "Gana",
+  "038dd6e7831379df": [
+    "Participe de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para enviar seus palpites e começar a acompanhar sua pontuação."
+  ],
+  "0515236f2ec9a3dc": "Quartas de final",
+  "051acc34eaf9d1df": "Atividade",
+  "06fe069e2e354c9f": "do bolão",
+  "0867dd038c7e0887": {
+    "c": [
+      {
+        "i": 2,
+        "t": "TeamCrest"
+      },
+      {
+        "i": 3,
+        "k": "_gt_value_3",
+        "v": "v"
+      }
+    ],
+    "i": 1,
+    "t": "span"
+  },
+  "0a14dde143067c61": "EUA",
+  "0aba693eb2a7d892": "\"Os deuses do futebol não tiveram piedade. Eles vão voltar mais fortes em 2030.\"",
+  "0b3c215db384af5c": [
+    "Só ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " alma",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    " corajosa acertou esse palpite."
+  ],
+  "0d9ca9e89bb2a5cf": "Escócia",
+  "0f442932c6435aad": {
+    "c": {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    },
+    "i": 1,
+    "t": "div"
+  },
+  "0f4cc07a59d6c2fc": "Rei do Mata-mata",
+  "1276b2936a97b94c": "Quando a pressão aumentou, eles corresponderam.",
+  "12ec1e956446c1d8": "Fase de grupos",
+  "13488d9b83ff07dc": "Compartilhar",
+  "14d42f94f3db5683": "seg",
+  "151e3cc40d7c2b6b": "Os votos já saíram. Vamos ver como tudo aconteceu.",
+  "182a659d70f8ea72": "Senha",
+  "1ae6ebce4c10d7ff": "Aguardando partidas",
+  "1bc27a95155b34e3": "Panorama geral",
+  "1c615f300fc1acef": "Sua retrospectiva",
+  "20d26104469b0ebc": "Total de palpites",
+  "23b32626507e4ff5": "Colômbia",
+  "23febe266e6e0d3d": "Estados Unidos",
+  "27f4c5c0397237f8": "Jogador não encontrado nesta classificação.",
+  "2acbb0f4acd72360": "Alemanha",
+  "2ae4c42d891535fc": [
+    "subiu ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " posições"
+  ],
+  "2af131eeb0bd2e12": "Terceiro lugar",
+  "2c0355d081fe8c67": "Todas as previsões deste jogador.",
+  "2c732e8694095d25": "África do Sul",
+  "2d8eea43eae52851": "O bolão começa",
+  "2df5eccdce6e0a24": [
+    "Participe de ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " para enviar palpites"
+  ],
+  "2e3808e0d126897f": "Melhor sequência",
+  "2e8703e9252b3b33": "Palpites",
+  "2ecf88ef9e8e4259": "Casa",
+  "2f59369d3cd781f4": "Sistema de pontuação",
+  "3070a60b00ad489a": "Nome",
+  "30839878c6d4d317": "Agrupamento",
+  "338042bd9af934e9": "Países Baixos",
+  "34af6ddfc9cac4be": "Vencedor do Grupo A",
+  "374dac09151d4578": "Pendente",
+  "37c996d7488f8405": "Atualizações de previsões e da classificação aparecerão aqui automaticamente.",
+  "39180caf24c6265e": "Empate",
+  "3a53e919bdcdda94": "Ainda não há dados suficientes",
+  "3b207d052380c219": "Participar do bolão",
+  "3bbd0010058ee8cd": "Jogados",
+  "3c40cb2858159cdb": "Acertos",
+  "3ca94e63931f1ea3": "Marrocos",
+  "3e067ffe5ea748a3": "Mostrar partidas com palpite",
+  "3e784d336673b7ec": "Tchéquia",
+  "3f5c2b399f8d3b78": "Classificação",
+  "3f67e3a6f3e87acb": [
+    "Conectado como ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    ". Você pode continuar navegando ou participar deste bolão quando estiver pronto."
+  ],
+  "42b87742c46831a5": "Empate",
+  "4453e4757b4f4cf9": "Atualizando os dados do bolão…",
+  "447b3c4267008540": "Maior Zebra",
+  "44fbd910000d3456": "Primeiro adversário",
+  "45364730b756553d": "min",
+  "4590f01cdb6882a8": "Uzbequistão",
+  "462504620e73d01d": "Fora",
+  "46258874be363668": "Brasil",
+  "469aae33a5a5bc74": "Fechado",
+  "46d83b23933d98fc": "Mira certeira",
+  "46fbddba4c04a526": "do bolão errou essa",
+  "47f1f38a0c8edfff": [
+    "Entre para enviar seus palpites para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "49afa076f2982524": "Ainda não há palpites.",
+  "49e7ca6fc1ecfc58": "jogadores",
+  "4aba3039707ad3b6": "previsões corretas",
+  "4c9f5f6661d88e9b": "Austrália",
+  "4cd2d50dafb23172": "Fase de grupos? A praia deles.",
+  "4d99c304274d4897": "Nova Zelândia",
+  "4ead0cf677142945": "Costa do Marfim",
+  "4fee4cc8b28cfaf0": "RETROSPECTIVA",
+  "537b386051c8204c": "horas",
+  "53a58cd8803af805": "Apito final:",
+  "53fa193620953350": "Jogadores",
+  "5599e833dc88e539": "Abrir a URL de um espaço de trabalho",
+  "56825e96c1f33a28": "Palpite incorreto",
+  "5692b3d251f7d53a": "Fase",
+  "579e35d0bb5255e5": "Próximos",
+  "58d0576c3099239d": "16 avos de final",
+  "58d9bd98beb22c66": "Até a próxima",
+  "5c5ddf8f825d41da": "República da Coreia",
+  "5cf609a52080794f": [
+    "Posição ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    " de ",
+    {
+      "i": 2,
+      "k": "_gt_value_2",
+      "v": "v"
+    }
+  ],
+  "5f7af753f3095088": "Valeu por jogar!",
+  "5f9b3090c6ebd4a7": "Mandando bem sem alarde",
+  "5fc4ddb22bcb7f86": "Retrospectiva",
+  "5ff2b6196208834d": "Ninguém conseguiu chegar a um consenso nessa",
+  "60ef184a1d688413": "Precisão",
+  "6223c45811e4bc71": "Canadá",
+  "635cf4862a9b89d9": "venceu",
+  "67e650963e7025fb": "RD do Congo",
+  "68b9f83d614198b5": "Croácia",
+  "6ee033205ed5bff5": "Os palpites são bloqueados no início da partida e não podem mais ser alterados.",
+  "6ef8e8351a1e5b77": "precisão",
+  "6f3a3f8445a7104e": "Paraguai",
+  "70f3289508360373": "Semifinal",
+  "7109a6e8ae38197d": "\"Talvez não tenham vencido o bolão, mas com certeza manjam de futebol.\"",
+  "76230d7945e51a03": "Disputados",
+  "77b5f98f1f9a4ca7": "Próximo",
+  "7853bd9e23f25bb6": "Total",
+  "79afc76852a2982f": "VS",
+  "79b3c483f8948eec": "🎉 Parabéns!",
+  "7ca761ea36e4d445": "Jordânia",
+  "7d07deb85ba6d564": "Quando davam palpites, acertavam em cheio.",
+  "7dd09fdd59c1c7cd": "Portugal",
+  "7e729dec108938f7": "acertos no mata-mata",
+  "7ea0ff7a55f46ac0": "Crie uma conta.",
+  "7f71b8e933aee987": "Já tem conta? ",
+  "83d18118a390d5f3": "Volte depois que o torneio terminar para ver a retrospectiva do seu bolão.",
+  "83dbe62c61d55bda": "É isso aí",
+  "8450121ebdfa1dae": "Criar conta",
+  "845ba43e0aa91b4f": "Começa em",
+  "84916976ef8f8d86": "Cabo Verde",
+  "84cc5eb3f0ed0d22": "Uruguai",
+  "84f949f44dd985cd": "Noruega",
+  "851c9e7d5f13985b": "Irã",
+  "8555b83cd7f215c4": "Dê seu palpite no resultado antes do início da partida para ganhar pontos.",
+  "86a50043ca756a01": "Bolão",
+  "88b7378582d9589a": "Argentina",
+  "8b324ba31d982621": "Entre para enviar seus palpites.",
+  "9099d0df3e0ceef5": "Que bom ver você de volta",
+  "90bf57558437c008": {
+    "c": [
+      {
+        "i": 2,
+        "t": "UserPlus"
+      },
+      "Ainda não faz parte?"
+    ],
+    "i": 1,
+    "t": "div"
+  },
+  "919c56465e9ca5d7": "Não foi possível carregar esta classificação.",
+  "91a1fb9f12d2524e": "No topo",
+  "92267e3641701d68": "Pontos",
+  "927cb48154a25f55": "Partidas",
+  "939d7858b9db38a0": "A definir",
+  "9433c101a0b2d96d": "lugar.",
+  "96973fb6652ccc76": "Bósnia e Herzegovina",
+  "97bff47be7869dc3": "Haiti",
+  "986dab18039abb9e": "Classificação final",
+  "98ad8329b7eb7fe4": "Espaço de trabalho não encontrado",
+  "997879730b235a08": "Participe de um espaço de trabalho para enviar seus palpites e começar a acompanhar sua pontuação.",
+  "9a06fd459ce858b9": "Ao vivo",
+  "9b362fb8f28b34d1": "Áustria",
+  "9b80822b4e10dce8": "\"O vencedor da lanterna — a alma de todo bolão. Na próxima vez vai ser diferente.\"",
+  "9db16884c1c9d324": "Voltar",
+  "9e1ab819e27bf878": "Em números",
+  "9ec680f43d9c06ad": "Suíça",
+  "9efeddd16a1ba09e": "Veja o que aconteceu neste torneio",
+  "9f6c561caf66e727": "Egito",
+  "a09dd8508c7c2b12": "Página de palpites",
+  "a0ec56b63cb5ebc1": "Partida mais disputada",
+  "a482665efe0bb687": "Previsões",
+  "a4b99d2d2e59c99b": "França",
+  "a60ceaa335cc5b30": "palpitou",
+  "a65f36dea1c14299": "Bélgica",
+  "a68f5eb36170dd82": "para o",
+  "a913defaad3414ad": "Ainda não há jogadores.",
+  "a9e67eeb22b06243": "Campeão do bolão",
+  "aa39c8d4b0caedfb": "Anterior",
+  "af7eb4f9c7f0f575": "Filtros",
+  "afc307fd60d5e156": "Palpites",
+  "b0784c925bcb56bc": "previsões erradas",
+  "b087dec46b6bb396": "Turquia",
+  "b0a632820ce0c1f4": "Final",
+  "b104514dd0ff33a5": "México",
+  "b22acab22e51149b": "Japão",
+  "b2be70822d55f16a": "Aberto",
+  "b394af386327cd71": "2º colocado do Grupo B",
+  "b50c41465e5408b3": "E-mail",
+  "b571b0ed6391a647": "acertos na fase de grupos",
+  "b6e27ab2537ef874": "Crie uma",
+  "b771df0379730bca": "Iraque",
+  "b7fc48282ebe040e": "corretas",
+  "b83a0063a6cecdaf": "Posição",
+  "bbd00c0f14ba7855": "Tunísia",
+  "bbe653637f55dfe4": "Mostrar partidas passadas",
+  "c047f54c701ee499": "Incorreto",
+  "c0f211a19329f0ec": "Arábia Saudita",
+  "c1228f7d87e5648a": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "% de acerto no mata-mata"
+  ],
+  "c145bf1755845240": "Costa do Marfim",
+  "c16ef97ddffd33b2": "Catar",
+  "c36f1d7a880b0fbf": "Inglaterra",
+  "c4d652790254d3f2": "Bolão iniciado",
+  "c544b470667f829f": "Sem estatísticas ainda",
+  "c678bed8c1d15e05": "Curaçau",
+  "c71c72baddd3d49f": "Adversário do grupo",
+  "c730811c3d2ca6f8": "Sem palpite",
+  "c9c50f0332867e60": "Panamá",
+  "ca6f93fa269d9771": "Azarão",
+  "cb65c3d2a721cd4c": "seguidas",
+  "cbef0cc8095d67c0": "Equador",
+  "cc73d3632b0806e2": "Não tem conta? ",
+  "cdc5fc4d2cdf859b": "dias",
+  "cdc68c7d08d5a01b": "Copa do Mundo 2026",
+  "ce41522f94f17449": "pts",
+  "cfb2b0875cb6f217": "Atualiza ao vivo à medida que os resultados das partidas são divulgados.",
+  "d12a02d4621bc8fc": "Que torneio! Até 2030 — ou quem sabe a gente encontre outra competição antes disso.",
+  "d31ed8a36de506ed": "Suécia",
+  "d337fb3d75b9a633": [
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "% de acerto na fase de grupos"
+  ],
+  "d35954604b717007": "Suas estatísticas",
+  "d5b5a68e565baba8": "Classificado",
+  "d665d1422934588f": "Guru da fase de grupos",
+  "d849d0bc1d9afbde": "Os palpites são fechados quando as partidas começam.",
+  "d90a157682a43912": "Argélia",
+  "d9681ac7e4613ff4": "Participar agora",
+  "da3ec44170334318": "Linha do tempo ao vivo dos palpites, mudanças na classificação e resultados finais.",
+  "dbe33dcc7842dccc": [
+    "Crie uma conta para ",
+    {
+      "i": 1,
+      "k": "_gt_value_1",
+      "v": "v"
+    },
+    "."
+  ],
+  "dc3e261b96e0409b": "Palpite correto",
+  "e20a94bb9b905c6a": "Pior fase",
+  "e52151684b116f53": {
+    "c": "Participar",
+    "i": 1,
+    "t": "button"
+  },
+  "e8a6945232eb4d05": "Oitavas de final",
+  "ea3b755f10424fa5": "Participe deste espaço de trabalho para ver a atividade dos jogadores.",
+  "eb187ab93c3f725f": "Não foi possível carregar a Atividade no momento.",
+  "ec21b232e0eacd4a": "Entrar",
+  "ec43609dd0836245": "Senegal",
+  "ed67b5ef4903b974": "Pontuação",
+  "ef8e91cb52a44f12": "Espanha",
+  "f4a140c9e4289397": "Assista de novo",
+  "f4e7daea577ad235": "O pódio",
+  "fb7900f78343f2d1": "Acertar o resultado da partida rende 3 pontos.",
+  "ffb37ba7ae41476e": "Pontuação"
+}
